@@ -1,0 +1,178 @@
+<div>
+  <div class="page-header">
+    <h1 class="page-title">📦 Catálogo de Productos</h1>
+    <div style="display: flex; gap: 0.75rem; align-items: center;">
+      <button class="btn btn-outline" (click)="handleGenerateProposal()">
+        📥 Propuesta de Compra
+      </button>
+      <button class="btn btn-primary" (click)="openNuevo()">
+        ➕ Nuevo Producto
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+  <div *ngIf="success" class="alert alert-success">{{ success }}</div>
+
+  <div class="card">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Unidad</th>
+            <th>Coste unitario (€)</th>
+            <th>Stock mínimo ref.</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="productos.length === 0; else productList">
+            <td colspan="5" style="text-align: center; padding: 2rem; color: var(--gray-500);">
+              No hay productos en el catálogo. Pulsa "➕ Nuevo Producto" para crear el primero.
+            </td>
+          </tr>
+          <ng-template #productList>
+            <tr *ngFor="let p of productos; trackBy: trackById">
+              <td><strong>{{ p.nombre_producto }}</strong></td>
+              <td>{{ p.unidad_medida }}</td>
+              <td>{{ p.coste_unitario }}</td>
+              <td>{{ p.stock_minimo_alerta }}</td>
+              <td style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-sm btn-outline" (click)="openEdit(p)">✏️ Editar</button>
+                <button
+                        class="btn btn-sm btn-danger"
+                        (click)="handleDelete(p)"
+                        [disabled]="borrando === p.id_producto">
+                  {{ borrando === p.id_producto ? '...' : '🗑️' }}
+                </button>
+              </td>
+            </tr>
+          </ng-template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal: Nuevo Producto -->
+  <div *ngIf="showNuevo" class="modal-overlay" (click)="showNuevo = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>➕ Nuevo Producto</span>
+        <button type="button" class="btn btn-outline" (click)="showNuevo = false">✕</button>
+      </div>
+      <div *ngIf="npError" class="alert alert-danger">{{ npError }}</div>
+      <form (submit)="handleCrear(); $event.preventDefault()">
+        <div class="form-group">
+          <label class="form-label">Nombre del producto *</label>
+          <input class="form-input"
+                 [(ngModel)]="npNombre"
+                 name="npNombre"
+                 placeholder="Ej: Guantes de latex (par)"
+                 required />
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label">Unidad</label>
+            <select class="form-select"
+                    [(ngModel)]="npUnidad"
+                    name="npUnidad">
+              <option value="unidades">unidades</option>
+              <option value="rollos">rollos</option>
+              <option value="litros">litros</option>
+              <option value="pares">pares</option>
+              <option value="paquetes">paquetes</option>
+              <option value="cajas">cajas</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Coste unitario (€)</label>
+            <input class="form-input"
+                   type="number"
+                   step="0.01"
+                   min="0"
+                   [(ngModel)]="npCoste"
+                   name="npCoste"
+                   placeholder="0.00" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stock mínimo de referencia</label>
+          <input class="form-input"
+                 type="number"
+                 min="0"
+                 [(ngModel)]="npMinimo"
+                 name="npMinimo"
+                 placeholder="0" />
+        </div>
+        <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+          💡 El producto se guarda en el catálogo general. Para usarlo en un centro, ve a <strong>Centros</strong> y añádelo desde el detalle.
+        </p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" (click)="showNuevo = false">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="npLoading">
+            {{ npLoading ? 'Creando...' : 'Crear producto' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Editar Producto -->
+  <div *ngIf="showEdit" class="modal-overlay" (click)="showEdit = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>✏️ Editar Producto</span>
+        <button type="button" class="btn btn-outline" (click)="showEdit = false">✕</button>
+      </div>
+      <div *ngIf="editError" class="alert alert-danger">{{ editError }}</div>
+      <form (submit)="handleEdit(); $event.preventDefault()">
+        <div class="form-group">
+          <label class="form-label">Nombre del producto *</label>
+          <input class="form-input"
+                 [(ngModel)]="editNombre"
+                 name="editNombre"
+                 required />
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label">Unidad</label>
+            <select class="form-select"
+                    [(ngModel)]="editUnidad"
+                    name="editUnidad">
+              <option value="unidades">unidades</option>
+              <option value="rollos">rollos</option>
+              <option value="litros">litros</option>
+              <option value="pares">pares</option>
+              <option value="paquetes">paquetes</option>
+              <option value="cajas">cajas</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Coste unitario (€)</label>
+            <input class="form-input"
+                   type="number"
+                   step="0.01"
+                   min="0"
+                   [(ngModel)]="editCoste"
+                   name="editCoste" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stock mínimo de referencia</label>
+          <input class="form-input"
+                 type="number"
+                 min="0"
+                 [(ngModel)]="editMinimo"
+                 name="editMinimo" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" (click)="showEdit = false">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="editLoading">
+            {{ editLoading ? 'Guardando...' : 'Guardar cambios' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

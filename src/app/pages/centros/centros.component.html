@@ -1,0 +1,177 @@
+<div>
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <h1 class="page-title">🏢 Centros de Trabajo</h1>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <button class="btn btn-primary" (click)="showForm = true">+ Nuevo Centro</button>
+      <!-- GuiaAyuda placeholder -->
+      <div class="guia-ayuda">
+        <p>Esta pantalla muestra <strong>tus centros de trabajo</strong> (los lugares donde limpias) y qué tienen cada uno.</p>
+        <h3>¿Qué ves en la tabla?</h3>
+        <ul>
+          <li><strong>Nombre y dirección:</strong> el centro y dónde está.</li>
+          <li><strong>Presupuesto/mes:</strong> lo que quieres gastar al mes en ese centro.</li>
+          <li><strong>Productos:</strong> cuánto material hay asignado.</li>
+        </ul>
+        <h3>¿Cómo ver el detalle de un centro?</h3>
+        <p><strong>Clica en cualquier fila</strong> (en el nombre). Se despliega la lista de productos que tiene ese centro, con su stock.</p>
+        <h3>¿Cómo cambiar datos de un centro?</h3>
+        <p>Pulsa <strong>"Editar"</strong> en la fila. Puedes cambiar el nombre, la dirección y el presupuesto mensual.</p>
+        <h3>¿Cómo añadir productos a un centro?</h3>
+        <p>Despliega el centro y pulsa <strong>"➕ Añadir producto"</strong>. Eliges un producto del catálogo general, pones la cantidad inicial y el stock mínimo. Aparece en la lista de productos del centro.</p>
+        <p>Para crear un producto nuevo que no exista, ve a la pestaña <strong>Inventario → "➕ Nuevo Producto"</strong>. Se guarda en el catálogo general y luego lo añades desde aquí.</p>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="msg" [class]="msg.includes('Error') ? 'alert alert-danger' : 'alert alert-success'">{{ msg }}</div>
+
+  <div *ngIf="showForm" class="card" style="margin-bottom: 16px;">
+    <h3>Nuevo Centro</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+      <div class="form-group">
+        <label class="form-label">Nombre</label>
+        <input class="form-input" [(ngModel)]="form.nombre" name="nombre" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dirección</label>
+        <input class="form-input" [(ngModel)]="form.direccion" name="direccion" />
+      </div>
+    </div>
+    <div style="display: flex; gap: 8px; margin-top: 12px;">
+      <button class="btn btn-primary" (click)="handleCreate()">Crear</button>
+      <button class="btn btn-outline" (click)="showForm = false">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Dirección</th>
+            <th>Presupuesto/mes</th>
+            <th>Productos</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="centros.length === 0; else centroList">
+            <td colspan="5" style="color: #6b7280; text-align: center; padding: 2rem;">No hay centros registrados</td>
+          </tr>
+          <ng-template #centroList>
+            <tr *ngFor="let c of centros; trackBy: trackById" class="centro-fila" [class.abierto]="centroAbierto === c.id_centro"
+                (click)="centroAbierto = centroAbierto === c.id_centro ? null : c.id_centro"
+                style="cursor: pointer;">
+              <td>
+                <span class="centro-flecha">{{ centroAbierto === c.id_centro ? '▾' : '▸' }}</span>
+                <strong>{{ c.nombre_centro || '—' }}</strong>
+              </td>
+              <td>{{ c.direccion || '—' }}</td>
+              <td>{{ c.presupuesto_mensual ? (c.presupuesto_mensual | number:'1.0-0') + ' €' : '—' }}</td>
+              <td>{{ c._count?.inventarioCentros ?? '—' }}</td>
+              <td>
+                <button class="btn btn-sm btn-outline" (click)="abrirEditar(c); $event.stopPropagation()">Editar</button>
+              </td>
+            </tr>
+
+            <!-- Expanded row for detalle -->
+            <tr *ngIf="centroAbierto !== null" class="detalle-fila">
+              <td colspan="5">
+                <div class="detalle-grid">
+                  <ng-container *ngIf="getCentroById(centroAbierto) as centro; else noCentro">
+                    <div>
+                      <h4>📦 Productos ({{ centro.inventarioCentros?.length ?? 0 }})</h4>
+                      <button class="btn btn-sm btn-primary" style="margin-bottom: 0.75rem;"
+                              (click)="abrirAddProd(centro.id_centro); $event.stopPropagation()">
+                        ➕ Añadir producto
+                      </button>
+                      <div *ngIf="(centro.inventarioCentros?.length ?? 0) === 0" class="detalle-vacio">
+                        Sin inventario
+                      </div>
+                      <ul class="detalle-lista">
+                        <li *ngFor="let inv of centro.inventarioCentros; trackBy: trackByInvId">
+                          {{ inv.producto.nombre_producto }} ({{ inv.producto.unidad_medida }})
+                          <span class="detalle-stock">
+                            reg. {{ inv.cantidad_actual }}{{ inv.stock_fisico !== null ? ' · fís. ' + inv.stock_fisico : '' }}{{ (inv.stock_fisico !== null && inv.cantidad_actual > inv.stock_fisico) ? ' · 🔴 -' + (inv.cantidad_actual - inv.stock_fisico) : '' }}
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+                  </ng-container>
+                  <ng-template #noCentro>
+                    <p>Loading...</p>
+                  </ng-template>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal: Editar Centro -->
+  <div *ngIf="editando" class="modal-overlay" (click)="cerrarEditar()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3 id="modal-editar-titulo">Editar Centro</h3>
+      <div class="form-group">
+        <label class="form-label">Nombre</label>
+        <input class="form-input" [(ngModel)]="editForm.nombre_centro" name="nombre_centro" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dirección</label>
+        <input class="form-input" [(ngModel)]="editForm.direccion" name="direccion" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Presupuesto mensual (€)</label>
+        <input class="form-input" type="number" min="0" step="10" [(ngModel)]="editForm.presupuesto_mensual" name="presupuesto_mensual" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="cerrarEditar()" [disabled]="guardando">Cancelar</button>
+        <button class="btn btn-primary" (click)="handleUpdate()" [disabled]="guardando">
+          {{ guardando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Añadir producto al centro -->
+  <div *ngIf="showAddProd" class="modal-overlay" (click)="showAddProd = false">
+    <div class="modal" (click)="$event.stopPropagation()" style="max-width: 480px;">
+      <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span id="modal-addprod-titulo">➕ Añadir producto al centro</span>
+        <button type="button" class="btn btn-outline" (click)="showAddProd = false" aria-label="Cerrar modal">✕</button>
+      </div>
+      <div *ngIf="addSuccess" class="alert alert-success">{{ addSuccess }}</div>
+      <div *ngIf="addError" class="alert alert-danger">{{ addError }}</div>
+      <form (submit)="guardarAddProd(); $event.preventDefault()">
+        <div class="form-group">
+          <label class="form-label">Producto del catálogo *</label>
+          <select class="form-select" [(ngModel)]="addProdId" name="addProdId" required>
+            <option value="">Selecciona un producto...</option>
+            <option *ngFor="let p of catalogo" [value]="p.id_producto">
+              {{ p.nombre_producto }} ({{ p.unidad_medida }})
+            </option>
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label">Cantidad inicial</label>
+            <input class="form-input" type="number" min="0" [(ngModel)]="addCantidad" name="addCantidad" placeholder="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Stock mínimo</label>
+            <input class="form-input" type="number" min="0" [(ngModel)]="addMinimo" name="addMinimo" placeholder="0" />
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" (click)="showAddProd = false">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="addLoading">
+            {{ addLoading ? 'Añadiendo...' : 'Añadir al centro' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

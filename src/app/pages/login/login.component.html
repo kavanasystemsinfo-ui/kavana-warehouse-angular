@@ -1,0 +1,21 @@
+<form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+  <h2>Iniciar Sesión</h2>
+  <div class="form-group">
+    <label for="email">Email:</label>
+    <input type="email" id="email" formControlName="email" class="form-control" [class.is-invalid]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+    <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="invalid-feedback">
+      Por favor, ingresa un email válido.
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="password">Contraseña:</label>
+    <input type="password" id="password" formControlName="password" class="form-control" [class.is-invalid]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+    <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="invalid-feedback">
+      La contraseña es requerida.
+    </div>
+  </div>
+  <button type="submit" [disabled]="loginForm.invalid || loading" class="btn btn-primary">
+    {{ loading ? 'Iniciando...' : 'Iniciar Sesión' }}
+  </button>
+  <div *ngIf="error" class="alert alert-danger mt-3">{{ error }}</div>
+</form>

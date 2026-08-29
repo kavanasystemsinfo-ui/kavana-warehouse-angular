@@ -1,0 +1,113 @@
+<div>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">💶 Coste por Centro</h1>
+      <span class="stat-sub">Material consumido vs. lo que quieres gastar — {{ data?.mes }}</span>
+    </div>
+    <div class="guia-ayuda">
+      <p>Esta pantalla te dice <strong>cuánto dinero de material se ha gastado en cada centro</strong> y si te pasas de lo que quieres gastar.</p>
+      <h3>¿Qué ves?</h3>
+      <ul>
+        <li><strong>Coste del mes:</strong> dinero en material que el centro ha consumido (lo que se ha usado de lo que había en el almacén).</li>
+        <li><strong>Tu presupuesto:</strong> la cantidad que tú has decidido gastar al mes en ese centro.</li>
+        <li><strong>Barra de color:</strong>
+          <ul>
+            <li>🟢 <strong>Verde</strong> — vas controlado, gastas menos de lo presupuestado.</li>
+            <li>🟡 <strong>Ámbar</strong> — vas justo, te acercas al límite.</li>
+            <li>🔴 <strong>Rojo</strong> — <strong>te pasas</strong> del presupuesto. Aquí pone cuántos euros te has pasado.</li>
+          </ul>
+        </li>
+      </ul>
+      <h3>¿Cómo cambiar tu presupuesto?</h3>
+      <p>Cada tarjeta tiene un botón <strong>"Fijar presupuesto"</strong>. Escribe cuánto quieres gastar al mes en ese centro y pulsa guardar. La barra se actualiza al momento.</p>
+      <div class="guia-ejemplo">
+        💡 <strong>Ejemplo:</strong> si Plaza de Toros tiene un presupuesto de 15 € y la barra sale 🔴 "Te pasas en 1,57 €", sube el presupuesto a 20 € y ya saldrá verde.
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <div class="stats-grid">
+    <div class="stat-card danger">
+      <span class="stat-label">Coste total material (mes)</span>
+      <span class="stat-value">{{ (data?.total_coste ?? 0) }} €</span>
+      <span class="stat-sub">suma de todos los centros</span>
+    </div>
+    <div class="stat-card primary">
+      <span class="stat-label">Presupuesto total fijado</span>
+      <span class="stat-value">{{ (data?.total_presupuesto ?? 0) }} €</span>
+      <span class="stat-sub">lo que tú quieres gastar</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Por centro</h2></div>
+    <ng-container *ngIf="data && data.centros.length > 0; else noData">
+      <div class="coste-grid">
+        <div *ngFor="let c of data.centros; trackBy: trackById" class="coste-card">
+          <div class="coste-card-header">
+            <strong>{{ c.centro.nombre_centro }}</strong>
+            <span class="badge"
+                  [class.badge-danger]="c.estado === 'rojo'"
+                  [class.badge-warning]="c.estado === 'ambar'"
+                  [class.badge-success]="c.estado === 'verde'"
+                  [class.badge-secondary]="c.estado === 'sin_presupuesto'">
+              {{ badgeText(c.estado) }}
+            </span>
+          </div>
+          <div class="coste-amount">{{ c.coste_material | number:'1.0-0' }} € <span class="coste-sub">gastado</span></div>
+          <ng-container *ngIf="c.porcentaje_usado !== null; else noPresupuesto">
+            <div class="progress-bar">
+              <div class="progress-fill"
+                   [ngStyle]="{'width.%': getBarWidth(c.porcentaje_usado), 'background-color': barColor(c.estado)}">
+              </div>
+            </div>
+            <div class="coste-meta">
+              {{ c.porcentaje_usado | number:'1.0-0' }}% de tu presupuesto ({{ c.presupuesto_mensual | number:'1.0-0' }} €)
+              <span *ngIf="c.diferencia !== null"
+                    [ngStyle]="{'color': c.diferencia >= 0 ? 'var(--success)' : 'var(--danger)', 'font-weight': '600'}">
+                {{ c.diferencia >= 0 ? (' · Te sobran ' + (c.diferencia | number:'1.0-0') + ' €') : (' · Te pasas ' + (getAbsDiff(c.diferencia) | number:'1.0-0') + ' €') }}
+              </span>
+            </div>
+          </ng-container>
+          <ng-template #noPresupuesto>
+            <div class="coste-meta">Aún no has fijado presupuesto para este centro</div>
+          </ng-template>
+          <button class="btn btn-sm btn-outline"
+                  (click)="abrir(c)"
+                  style="margin-top: 0.75rem;">
+            {{ c.presupuesto_mensual > 0 ? 'Cambiar presupuesto' : 'Fijar presupuesto' }}
+          </button>
+        </div>
+      </div>
+    </ng-container>
+    <ng-template #noData>
+      <p style="color: var(--gray-500); padding: 1rem 0;">No hay datos de coste todavía.</p>
+    </ng-template>
+  </div>
+
+  <!-- Modal for editing presupuesto -->
+  <div *ngIf="editando" class="modal-overlay" (click)="cerrar()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Presupuesto mensual — {{ editando.centro.nombre_centro }}</h3>
+      <p class="stat-sub">¿Cuánto quieres gastar en material al mes en este centro?</p>
+      <div class="form-group">
+        <label class="form-label">Importe (€/mes)</label>
+        <input class="form-input"
+               type="number"
+               min="0"
+               step="10"
+               [(ngModel)]="valor"
+               (input)="valor = $event.target.value"
+               autoFocus />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="cerrar()">Cancelar</button>
+        <button class="btn btn-primary" (click)="guardar()">
+          Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

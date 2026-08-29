@@ -1,0 +1,19 @@
+<div *ngIf="loading">Cargando...</div>
+<div *ngIf="error && !loading" class="alert alert-danger">{{ error }}</div>
+
+<table *ngIf="!loading && !error && costesData">
+  <thead>
+    <tr>
+      <th>Mes</th>
+      <th>Total Coste</th>
+      <th>Total Presupuesto</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngIf="costesData">
+      <td>{{ costesData.mes }}</td>
+      <td>{{ costesData.total_coste }}</td>
+      <td>{{ costesData.total_presupuesto }}</td>
+    </tr>
+  </tbody>
+</table>

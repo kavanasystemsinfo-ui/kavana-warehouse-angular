@@ -1,0 +1,65 @@
+<div class="page">
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h1 class="page-title">Supervisores de prueba</h1>
+      <p style="color: var(--text2); font-size: 0.9rem; margin: 0;">
+        Crea supervisores para probar el flujo de recuento. Se guardan solo en este navegador
+        y caducan a las 24 horas.
+      </p>
+    </div>
+    <button class="btn btn-primary" (click)="showForm = !showForm">
+      {{ showForm ? 'Cancelar' : '+ Nuevo supervisor' }}
+    </button>
+  </div>
+
+  <div *ngIf="msg" class="alert" style="margin-top: 1rem;">{{ msg }}</div>
+
+  <div *ngIf="showForm" class="card" style="margin-top: 1rem; padding: 1.5rem;">
+    <h3 style="margin-top: 0;">Nuevo supervisor de prueba</h3>
+    <div style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+      <div class="form-group">
+        <label class="form-label">Nombre</label>
+        <input class="form-input" [(ngModel)]="form.nombre" placeholder="Ej: Marta Ruiz" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" [(ngModel)]="form.email" placeholder="marta@demo.local" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input class="form-input" [(ngModel)]="form.password" placeholder="mínimo 4 caracteres" />
+      </div>
+    </div>
+    <button class="btn btn-primary" style="margin-top: 1rem;" (click)="handleCreate()" [disabled]="!form.nombre || !form.email || !form.password">
+      Crear supervisor
+    </button>
+  </div>
+
+  <div class="card" style="margin-top: 1rem; overflow: hidden;">
+    <table class="table" style="width: 100%;">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Rol</th>
+          <th>Caduca</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="supervisores.length === 0; else supervisoresList">
+          <td colspan="4" style="text-align: center; padding: 2rem; color: var(--text2);">
+            Aún no hay supervisores de prueba en este navegador.
+          </td>
+        </tr>
+        <ng-template #supervisoresList>
+          <tr *ngFor="let s of supervisores">
+            <td>{{ s.nombre }}</td>
+            <td>{{ s.email }}</td>
+            <td><span class="badge">{{ s.rol }}</span></td>
+            <td>{{ formatDate(s.expira_en) }}</td>
+          </tr>
+        </ng-template>
+      </tbody>
+    </table>
+  </div>
+</div>
