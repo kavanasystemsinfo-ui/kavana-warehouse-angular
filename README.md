@@ -1,137 +1,91 @@
 # Kavana-Warehouse Angular
 
-This is a migration of the original **Kavana-Warehouse** frontend from React (Vite) to Angular 18. The backend (Node.js/Express + Prisma) remains unchanged and is expected to be running at `/api/v1`.
+Migración del frontend de **Kavana-Warehouse** de React (Vite) a **Angular 21 standalone**. El backend original (Node.js/Express + Prisma/PostgreSQL) no se ha tocado: la app Angular se conecta a él vía proxy.
 
-## Purpose
+## Propósito
 
-This project demonstrates proficiency with Angular and serves as a portfolio piece for job applications requiring Angular experience.
+Demostrar competencia real con Angular: componentes standalone, enrutamiento, servicios inyectables, formularios reactivos, interceptores HTTP y consumo de una API REST con autenticación JWT. Es un proyecto de portafolio para postulaciones que piden Angular.
 
-## Features
+## Funcionalidad migrada
 
-- Login with JWT authentication and refresh-token rotation
-- Dashboard showing costos por centro (cost vs budget)
-- Inventario listing with product details
-- Standalone components, reactive forms, Angular Router
-- Services encapsulating all API calls (matching the original React `api.ts`)
-- Basic error handling and loading states
+Pantallas portadas desde el frontend React original, todas funcionando contra el backend real:
 
-## Prerequisites
+- Login JWT con guardado de token y usuario
+- Dashboard: coste por centro vs presupuesto del mes
+- Inventario: catálogo de productos con coste unitario y stock mínimo
+- Costes por centro: consumo vs presupuesto
+- Responsables: asignación de usuarios a centros
+- Centros: gestión con productos asignados
+- Deviations: control de mermas por centro
+- Incidents: incidencias en instalaciones
+- Asistente (placeholder) y Supervisores (demo)
 
+## Stack
+
+- Angular 21 (standalone components, Angular Router, HttpClient)
+- TypeScript
+- SCSS
 - Node.js >= 18
-- Angular CLI (`npm install -g @angular/cli`)
-- Backend running (see original repo for setup)
+- Backend: Node/Express + Prisma + PostgreSQL (repositorio `Kavana-Warehouse` original)
 
-## Getting Started
+## Cómo arrancar
 
-1. **Clone the repository** (if you haven't already):
+1. **Backend**: clona y arranca el backend original `Kavana-Warehouse` en `http://localhost:3000` (requiere PostgreSQL con migraciones y seed aplicados).
+
+2. **Frontend**:
    ```bash
-   git clone https://github.com/kavanasystemsinfo-ui/Kavana-Warehouse.git
-   cd Kavana-Warehouse
-   ```
-
-2. **Start the backend** (from the original repo):
-   ```bash
-   # In one terminal
    npm install
-   npm start   # or whatever start script you use
+   ng serve --proxy-config proxy.conf.json --port 4201
    ```
-   The API should be available at `http://localhost:3000/api/v1` (adjust if different).
+   Abre `http://localhost:4201`. El proxy redirige `/api/v1` a `localhost:3000`.
 
-3. **Install frontend dependencies**:
-   ```bash
-   cd kavana-warehouse-angular   # the Angular project we created
-   npm install
-   ```
+3. **Credenciales demo** (las que crea el seed del backend):
+   - Email: `supervisor.demo@kavanawarehouse.com`
+   - Contraseña: `kavana`
 
-4. **Run the development server**:
-   ```bash
-   ng serve --port 4201
-   ```
-   Visit `http://localhost:4201` in your browser.
-
-5. **Login**  
-   Use any valid credentials from the backend demo (e.g., supervisor/demo accounts).  
-   Upon success, you'll be redirected to the Dashboard.
-
-## Project Structure
+## Estructura
 
 ```
-src/
- ├─ app/
- │   ├─ services/
- │   │   └─ api.service.ts          # All backend API calls
- │   ├─ layout/
- │   │   └─ layout.component.*      # Router outlet container
- │   ├─ pages/
- │   │   ├─ login/
- │   │   │   ├─ login.component.*   # Login form
- │   │   │   └─ ...
- │   │   ├─ dashboard/
- │   │   │   ├─ dashboard.component.*  # Costos por centro (placeholder)
- │   │   │   └─ ...
- │   │   ├─ inventario/
- │   │   │   └─ inventario.component.*  # Inventory listing
- │   │   └─ ... (more pages to migrate)
- │   ├─ app.config.ts               # Providers (ApiService, HttpClient)
- │   ├─ app.routes.ts               # Route definitions
- │   ├─ app.html                    # <app-layout></app-layout>
- │   └─ app.ts                      # Root component
- ├─ assets/                         # Static assets (copied from React public/)
- ├─ styles.scss                     # Global styles
- └─ index.html
+src/app/
+ ├─ services/
+ │   ├─ api.service.ts           # Todas las llamadas a la API (métodos tipados)
+ │   └─ auth.interceptor.ts      # Inyecta Authorization: Bearer <token>
+ ├─ layout/
+ │   └─ layout.component.*       # Contenedor con router-outlet
+ ├─ pages/
+ │   ├─ login/                   # Formulario de acceso
+ │   ├─ dashboard/               # Costes por centro del mes
+ │   ├─ inventario/              # Catálogo de productos
+ │   ├─ costes/                  # Coste vs presupuesto
+ │   ├─ responsables/            # Asignación de responsables
+ │   ├─ centros/                 # Centros de trabajo
+ │   ├─ deviations/              # Mermas
+ │   ├─ incidents/               # Incidencias
+ │   ├─ supervisores/            # Demo de supervisores
+ │   └─ asistente/               # Placeholder de asistente
+ ├─ app.config.ts                # Providers: routing, HTTP, interceptor, ApiService
+ └─ app.routes.ts                # Definición de rutas
 ```
 
-## API Service
+## Autenticación
 
-The `ApiService` in `src/app/services/api.service.ts` mirrors the original React `dashboard/src/lib/api.ts`:
+- `ApiService.login()` guarda el token JWT y el usuario en `localStorage`.
+- `AuthInterceptor` añade `Authorization: Bearer <token>` a cada petición saliente.
+- Endpoint de logout del backend.
 
-- Handles JWT storage in `localStorage`
-- Automatic refresh-token rotation on 401
-- Provides typed methods for every endpoint:
-  - `login`, `logout`
-  - `getInventario`, `getCentros`, `getCostes`, etc.
-  - Mutating endpoints: `createCentro`, `updateCentro`, `setPresupuesto`, etc.
-- All methods return `Observable<T>` and use `HttpClient` with proper error handling.
+## Notas técnicas
 
-## State Management
+- Sin biblioteca de estado global: cada componente gestiona su estado local con suscripciones RxJS.
+- `zone.js` está configurado como polyfill y `provideZoneChangeDetection()` está activo en `app.config.ts`. Sin esto, las respuestas HTTP no disparan detección de cambios y la vista se queda congelada en "Cargando..." (fue un bug real encontrado y corregido durante la migración).
+- Los estilos SCSS son mínimos; el foco de este proyecto es la lógica y la arquitectura Angular, no el diseño.
 
-- No global state library is used; each component manages its own UI state.
-- Shared data (e.g., selected period) could be moved to a service with `BehaviorSubject` if needed.
-- Authentication state (user, tokens) is handled within `ApiService` and persisted to `localStorage`.
-
-## Styling
-
-- Styles are written in SCSS (`.component.scss` files).
-- The global `styles.scss` imports Bootstrap variables if needed; currently it's empty.
-- Feel free to add a CSS framework (Bootstrap, Angular Material) by installing and importing in `angular.json`.
-
-## Testing
-
-- Unit tests were written following TDD during migration (each component has a corresponding `.spec.ts`).
-- Run tests with:
-  ```bash
-  ng test
-  ```
-- End-to-end tests can be added with Cypress or Playwright if desired.
-
-## Build for Production
+## Build de producción
 
 ```bash
 ng build --configuration production
+# Salida en dist/kavana-warehouse-angular/
 ```
-The output will be in `dist/kavana-warehouse-angular/`.
 
-## Notes
+## Estado
 
-- This migration focused on faithfully reproducing the functionality of the original React frontend.
-- Some UI details (exact colors, spacing) may differ but the core interactions are preserved.
-- The backup of the original React project is stored in `/root/backups/kavana-warehouse-backup-20260829094025/`.
-
-## License
-
-Original Kavana-Warehouse is presumably under some license; this Angular migration is for educational/portfolio purposes only.
-
----
-
-**Happy coding!**  
-*Your friendly Hermes Agent*
+Completado y verificado de punta a punta contra el backend real: login, dashboard, inventario, centros y costes muestran datos reales de la BD (probado en navegador). El backend original vive en el repo `kavanasystemsinfo-ui/Kavana-Warehouse`.
