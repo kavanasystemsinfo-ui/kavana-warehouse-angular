@@ -5,6 +5,7 @@
 // más alto tiene 1 dígito (5314 → "5314", no "5.314") — regla CLDR.
 
 export function fmtNum(v: number | string | null | undefined): string {
+  if (v === null || v === undefined) return '—';
   const n = typeof v === 'string' ? parseFloat(v) : Number(v);
   if (!Number.isFinite(n)) return '—';
   const [intPart, decPart] = String(n).split('.');
@@ -13,6 +14,7 @@ export function fmtNum(v: number | string | null | undefined): string {
 }
 
 export function fmtEuro(v: number | string | null | undefined): string {
+  if (v === null || v === undefined) return '—';
   const n = typeof v === 'string' ? parseFloat(v) : Number(v);
   if (!Number.isFinite(n)) return '—';
   const [intPart, decPart] = n.toFixed(2).split('.');
