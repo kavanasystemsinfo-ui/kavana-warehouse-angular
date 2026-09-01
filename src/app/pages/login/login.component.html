@@ -1,21 +1,64 @@
-<form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-  <h2>Iniciar Sesión</h2>
-  <div class="form-group">
-    <label for="email">Email:</label>
-    <input type="email" id="email" formControlName="email" class="form-control" [class.is-invalid]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
-    <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="invalid-feedback">
-      Por favor, ingresa un email válido.
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="logo.png" alt="KAVANA WAREHOUSE" style="width: 80px; height: 80px; border-radius: 12px; margin-bottom: 0.75rem;">
+      <h1>KAVANA WAREHOUSE</h1>
+      <p>Panel de Control de Oficina</p>
     </div>
+
+    @if (error) {
+      <div class="alert alert-danger">{{ error }}</div>
+    }
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label class="form-label" for="email">Usuario</label>
+        <input
+          id="email"
+          name="email"
+          class="form-input"
+          type="text"
+          formControlName="email"
+          required
+          autofocus
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="none"
+          spellcheck="false"
+        />
+        @if (loginForm.get('email')?.invalid && loginForm.get('email')?.touched) {
+          <div class="alert alert-danger" style="font-size: 0.8rem; margin-top: 0.35rem; margin-bottom: 0;">Por favor, ingresa un email válido.</div>
+        }
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Contraseña</label>
+        <input
+          id="password"
+          name="password"
+          class="form-input"
+          type="password"
+          formControlName="password"
+          placeholder="••••••••"
+          required
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="none"
+          spellcheck="false"
+        />
+        @if (loginForm.get('password')?.invalid && loginForm.get('password')?.touched) {
+          <div class="alert alert-danger" style="font-size: 0.8rem; margin-top: 0.35rem; margin-bottom: 0;">La contraseña es requerida.</div>
+        }
+      </div>
+
+      <button class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 1rem;" type="submit" [disabled]="loading">
+        {{ loading ? 'Iniciando sesión...' : 'Iniciar sesión' }}
+      </button>
+    </form>
+
+    <p class="login-assistant-note">
+      💬 ¿Quieres saber cómo funciona este proyecto? Prueba el <strong>asistente técnico</strong> (botón abajo): responde con la documentación real de Kavana Warehouse.
+    </p>
   </div>
-  <div class="form-group">
-    <label for="password">Contraseña:</label>
-    <input type="password" id="password" formControlName="password" class="form-control" [class.is-invalid]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
-    <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="invalid-feedback">
-      La contraseña es requerida.
-    </div>
-  </div>
-  <button type="submit" [disabled]="loginForm.invalid || loading" class="btn btn-primary">
-    {{ loading ? 'Iniciando...' : 'Iniciar Sesión' }}
-  </button>
-  <div *ngIf="error" class="alert alert-danger mt-3">{{ error }}</div>
-</form>
+  <app-assistant-widget></app-assistant-widget>
+</div>

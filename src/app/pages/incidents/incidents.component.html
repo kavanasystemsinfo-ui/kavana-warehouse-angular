@@ -1,8 +1,7 @@
 <div>
   <div class="page-header">
     <h1 class="page-title">Incidencias en Instalaciones</h1>
-    <!-- GuiaAyuda placeholder -->
-    <div class="guia-ayuda">
+    <app-guia-ayuda titulo="Incidencias">
       <p>Aquí puedes <strong>reportar problemas</strong> en cualquier centro (una avería, un material roto, un brillo que falta...).</p>
       <h3>¿Qué ves?</h3>
       <ul>
@@ -17,7 +16,7 @@
       </ol>
       <h3>¿Cómo cambiar el estado?</h3>
       <p>En cada incidencia hay un desplegable para marcarla <strong>en proceso</strong> o <strong>resuelta</strong>.</p>
-    </div>
+    </app-guia-ayuda>
   </div>
 
   <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
@@ -107,20 +106,20 @@
                   </span>
                 </td>
                 <td>
-                  <!-- Only show buttons if not in visita mode (we don't have visita, so we'll show) -->
-                  <ng-container *ngIf="inc.estado === 'pendiente'">
+                  <!-- En modo visita (demo solo lectura) no se puede cambiar el estado -->
+                  @if (!visita && inc.estado === 'pendiente') {
                     <button class="btn btn-sm" style="background: var(--warning); color: #000;" (click)="handleChangeEstado(inc.id_incidencia, 'en_proceso')">
                       Iniciar
                     </button>
-                  </ng-container>
-                  <ng-container *ngIf="inc.estado === 'en_proceso'">
+                  }
+                  @if (!visita && inc.estado === 'en_proceso') {
                     <button class="btn btn-sm btn-primary" (click)="handleChangeEstado(inc.id_incidencia, 'resuelta')">
                       Resolver
                     </button>
-                  </ng-container>
-                  <ng-container *ngIf="inc.estado === 'resuelta'">
+                  }
+                  @if (inc.estado === 'resuelta') {
                     <span style="color: var(--gray-500); font-size: 0.85rem;">✔ Cerrada</span>
-                  </ng-container>
+                  }
                 </td>
               </tr>
             </tbody>

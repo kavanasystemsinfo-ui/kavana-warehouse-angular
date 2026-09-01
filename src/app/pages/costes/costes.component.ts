@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { fmtNum, fmtEuro } from '../../lib/format';
+import { GuiaAyudaComponent } from '../../components/guia-ayuda/guia-ayuda.component';
 
 interface CosteCentro {
   centro: { id_centro: number; nombre_centro: string };
@@ -22,7 +24,7 @@ interface CostesData {
 @Component({
   selector: 'app-costes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, GuiaAyudaComponent],
   templateUrl: './costes.component.html',
   styleUrls: ['./costes.component.scss']
 })
@@ -32,6 +34,10 @@ export class CostesComponent implements OnInit {
   error: string | null = null;
   editando: CosteCentro | null = null;
   valor = '';
+
+  // Formato numérico español (regla Jorge): punto de miles, coma decimal.
+  fmtNum = fmtNum;
+  fmtEuro = fmtEuro;
 
   constructor(private apiService: ApiService) {}
 
@@ -92,9 +98,7 @@ export class CostesComponent implements OnInit {
   }
 
   // Helper methods for template
-  trackById(_: number, c: CosteCentro): number {
-    return c.centro.id_centro;
-  }
+
   getBarWidth(porcentaje: number | null): number {
     return porcentaje !== null ? Math.min(porcentaje, 100) : 0;
   }
@@ -102,8 +106,6 @@ export class CostesComponent implements OnInit {
     return dif !== null ? Math.abs(dif) : 0;
   }
 
-  formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleString("es-ES");
-  }
+
 
 }

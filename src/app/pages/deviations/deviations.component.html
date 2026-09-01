@@ -4,11 +4,12 @@
       <h1 class="page-title">Control de Mermas</h1>
       <span class="stat-sub">Stock registrado vs. conteo físico — {{ data?.mes }}</span>
     </div>
-    <button class="btn btn-outline" (click)="limpiarDemo()" [disabled]="guardando">
-      🧹 Limpiar datos demo
-    </button>
-    <!-- GuiaAyuda placeholder -->
-    <div class="guia-ayuda">
+    @if (!visita) {
+      <button class="btn btn-outline" (click)="limpiarDemo()" [disabled]="guardando">
+        🧹 Limpiar datos demo
+      </button>
+    }
+    <app-guia-ayuda titulo="Control de Mermas">
       <p>Esta pantalla controla las <strong>mermas</strong>: la diferencia entre lo que dice el almacén que hay y lo que hay realmente.</p>
       <h3>¿Qué es una merma?</h3>
       <p>Es el material que <strong>falta</strong> sin explicación. Si el sistema dice que hay 50 rollos y al contar físicamente solo hay 30, hay una merma de 20 rollos.</p>
@@ -25,22 +26,26 @@
       <div class="guia-ejemplo">
         💡 <strong>Ejemplo:</strong> Plaza de Toros tiene registrado 50 rollos y físico 30 → diferencia 20 rollos de merma.
       </div>
-    </div>
+    </app-guia-ayuda>
   </div>
 
-  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
-  <div *ngIf="resetMsg" class="alert alert-success">{{ resetMsg }}</div>
+  @if (error) {
+    <div class="alert alert-danger">{{ error }}</div>
+  }
+  @if (resetMsg) {
+    <div class="alert alert-success">{{ resetMsg }}</div>
+  }
 
   <!-- Stats -->
   <div class="stats-grid">
     <div class="stat-card danger">
       <span class="stat-label">Faltas detectadas</span>
-      <span class="stat-value">{{ (data?.total_desviaciones ?? 0) }}</span>
+      <span class="stat-value">{{ fmtNum(data?.total_desviaciones ?? 0) }}</span>
       <span class="stat-sub">centros con menos stock del registrado</span>
     </div>
     <div class="stat-card primary">
       <span class="stat-label">Líneas controladas</span>
-      <span class="stat-value">{{ (data?.desviaciones?.length ?? 0) }}</span>
+      <span class="stat-value">{{ fmtNum(data?.desviaciones?.length ?? 0) }}</span>
       <span class="stat-sub">productos por centro</span>
     </div>
   </div>
@@ -52,7 +57,9 @@
         <label class="form-label">Centro</label>
         <select class="form-select" [(ngModel)]="filtroCentro">
           <option value="">Todos</option>
-          <option *ngFor="let c of centros" [value]="c.id_centro">{{ c.nombre_centro }}</option>
+          @for (c of centros; track c.id_centro) {
+            <option [value]="c.id_centro">{{ c.nombre_centro }}</option>
+          }
         </select>
       </div>
       <button class="btn btn-primary" type="submit">Filtrar</button>
@@ -64,7 +71,7 @@
     <div class="card-header">
       <h2 class="card-title">Diferencia entre registrado y físico</h2>
     </div>
-    <ng-container *ngIf="data && data.desviaciones && data.desviaciones.length > 0; else noData">
+    @if (data && data.desviaciones && data.desviaciones.length > 0) {
       <div class="table-container">
         <table>
           <thead>
@@ -81,55 +88,66 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let d of data.desviaciones; trackBy: trackById">
-              <td><strong>{{ d.centro.nombre_centro }}</strong></td>
-              <td>{{ d.producto.nombre_producto }}</td>
-              <td>{{ d.cantidad_actual | number:'1.0-0' }}</td>
-              <td>{{ d.stock_fisico === null ? '—' : d.stock_fisico | number:'1.0-0' }}</td>
-              <td style="color: {{ d.desviacion && d.desviacion > 0 ? 'var(--danger)' : d.desviacion && d.desviacion < 0 ? 'var(--success)' : 'inherit' }}; font-weight: 600;">
-                {{ d.desviacion === null ? '—' : (d.desviacion > 0 ? '−' : '+') + (abs(d.desviacion) | number:'1.0-0') }}
-              </td>
-              <td>{{ d.porcentaje_desviacion === null ? '—' : (d.porcentaje_desviacion | number:'1.0-0') + '%' }}</td>
-              <td style="color: var(--danger); font-weight: 600;">{{ d.coste_desviacion | number:'1.0-0' }} €</td>
-              <td><span class="badge" [class.badge-danger]="d.estado === 'falta'" [class.badge-info]="d.estado === 'sobra'" [class.badge-warning]="d.estado === 'pendiente'">{{ badgeText(d.estado) }}</span></td>
-              <td>
-                <button class="btn btn-sm btn-outline" (click)="abrirConteo(d)">
-                  {{ d.stock_fisico === null ? 'Contar' : 'Ajustar' }}
-                </button>
-              </td>
-            </tr>
+            @for (d of data.desviaciones; track d.centro.id_centro + '-' + d.producto.id_producto) {
+              <tr>
+                <td><strong>{{ d.centro.nombre_centro }}</strong></td>
+                <td>{{ d.producto.nombre_producto }}</td>
+                <td>{{ fmtNum(d.cantidad_actual) }}</td>
+                <td>{{ d.stock_fisico === null ? '—' : fmtNum(d.stock_fisico) }}</td>
+                <td [style.color]="d.desviacion !== null && d.desviacion > 0 ? 'var(--danger)' : d.desviacion !== null && d.desviacion < 0 ? 'var(--success)' : 'inherit'" style="font-weight: 600;">
+                  @if (d.desviacion === null) {
+                    —
+                  } @else {
+                    {{ d.desviacion > 0 ? '−' : '+' }}{{ fmtNum(abs(d.desviacion)) }}
+                  }
+                </td>
+                <td>{{ d.porcentaje_desviacion === null ? '—' : fmtNum(d.porcentaje_desviacion) + '%' }}</td>
+                <td style="color: var(--danger); font-weight: 600;">{{ fmtEuro(d.coste_desviacion) }} €</td>
+                <td>
+                  <span class="badge"
+                        [class.badge-danger]="d.estado === 'falta'"
+                        [class.badge-info]="d.estado === 'sobra'"
+                        [class.badge-warning]="d.estado === 'pendiente'">{{ badgeText(d.estado) }}</span>
+                </td>
+                <td>
+                  <button class="btn btn-sm btn-outline" (click)="abrirConteo(d)">
+                    {{ d.stock_fisico === null ? 'Contar' : 'Ajustar' }}
+                  </button>
+                </td>
+              </tr>
+            }
           </tbody>
         </table>
       </div>
-    </ng-container>
-    <ng-template #noData>
+    } @else {
       <p style="color: var(--gray-500); padding: 1rem 0;">No hay diferencias registradas.</p>
-    </ng-template>
+    }
   </div>
 
   <!-- Modal de conteo -->
-  <div *ngIf="editando" class="modal-overlay" (click)="cerrarConteo()">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <h3>Conteo físico</h3>
-      <p>
-        <strong>{{ editando.centro.nombre_centro }}</strong> — {{ editando.producto.nombre_producto }}
-      </p>
-      <p class="stat-sub">Registrado en sistema: {{ editando.cantidad_actual | number:'1.0-0' }} {{ editando.producto.unidad_medida }}</p>
-      <div class="form-group">
-        <label class="form-label">Stock físico contado ({{ editando.producto.unidad_medida }})</label>
-        <input class="form-input"
-               type="number"
-               min="0"
-               [(ngModel)]="valorConteo"
-               (input)="valorConteo = $event.target.value"
-               autoFocus />
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-outline" (click)="cerrarConteo()" [disabled]="guardando">Cancelar</button>
-        <button class="btn btn-primary" (click)="guardar()" [disabled]="guardando">
-          {{ guardando ? 'Guardando...' : 'Guardar conteo' }}
-        </button>
+  @if (editando) {
+    <div class="modal-overlay" (click)="cerrarConteo()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <h3>Conteo físico</h3>
+        <p>
+          <strong>{{ editando.centro.nombre_centro }}</strong> — {{ editando.producto.nombre_producto }}
+        </p>
+        <p class="stat-sub">Registrado en sistema: {{ fmtNum(editando.cantidad_actual) }} {{ editando.producto.unidad_medida }}</p>
+        <div class="form-group">
+          <label class="form-label">Stock físico contado ({{ editando.producto.unidad_medida }})</label>
+          <input class="form-input"
+                 type="number"
+                 min="0"
+                 [(ngModel)]="valorConteo"
+                 (input)="valorConteo = $event.target.value" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" (click)="cerrarConteo()" [disabled]="guardando">Cancelar</button>
+          <button class="btn btn-primary" (click)="guardar()" [disabled]="guardando">
+            {{ guardando ? 'Guardando...' : 'Guardar conteo' }}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  }
 </div>

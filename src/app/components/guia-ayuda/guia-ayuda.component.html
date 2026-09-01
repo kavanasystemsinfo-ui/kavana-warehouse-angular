@@ -1,0 +1,24 @@
+<button
+  type="button"
+  class="btn btn-outline"
+  style="margin-left: auto;"
+  (click)="abierto = true"
+  aria-label="Abrir guía de ayuda"
+>❓ Ayuda</button>
+
+@if (abierto) {
+  <div class="modal-overlay" (click)="abierto = false">
+    <div class="modal guia-modal" (click)="$event.stopPropagation()">
+      <div class="guia-header">
+        <h2 class="modal-title" style="margin: 0;">❓ Guía — {{ titulo }}</h2>
+        <button type="button" class="btn btn-outline btn-sm" (click)="abierto = false" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="guia-contenido">
+        <ng-content></ng-content>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" (click)="abierto = false">Entendido</button>
+      </div>
+    </div>
+  </div>
+}

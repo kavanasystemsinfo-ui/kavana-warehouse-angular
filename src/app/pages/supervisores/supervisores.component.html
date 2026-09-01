@@ -2,7 +2,7 @@
   <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
     <div>
       <h1 class="page-title">Supervisores de prueba</h1>
-      <p style="color: var(--text2); font-size: 0.9rem; margin: 0;">
+      <p style="color: var(--gray-500); font-size: 0.9rem; margin: 0;">
         Crea supervisores para probar el flujo de recuento. Se guardan solo en este navegador
         y caducan a las 24 horas.
       </p>
@@ -47,7 +47,7 @@
       </thead>
       <tbody>
         <tr *ngIf="supervisores.length === 0; else supervisoresList">
-          <td colspan="4" style="text-align: center; padding: 2rem; color: var(--text2);">
+          <td colspan="4" style="text-align: center; padding: 2rem; color: var(--gray-500);">
             Aún no hay supervisores de prueba en este navegador.
           </td>
         </tr>

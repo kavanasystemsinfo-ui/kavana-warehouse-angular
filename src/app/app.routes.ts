@@ -9,18 +9,27 @@ import { DeviationsComponent } from './pages/deviations/deviations.component';
 import { IncidentsComponent } from './pages/incidents/incidents.component';
 import { AsistenteComponent } from './pages/asistente/asistente.component';
 import { SupervisoresComponent } from './pages/supervisores/supervisores.component';
+import { LayoutComponent } from './layout/layout.component';
+import { AuthGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
-  { path: 'dashboard', component: DashboardComponent },
-  { path: 'costes', component: CostesComponent },
-  { path: 'inventario', component: InventarioComponent },
-  { path: 'responsables', component: ResponsablesComponent },
-  { path: 'centros', component: CentrosComponent },
-  { path: 'deviations', component: DeviationsComponent },
-  { path: 'incidents', component: IncidentsComponent },
-  { path: 'asistente', component: AsistenteComponent },
-  { path: 'supervisores', component: SupervisoresComponent },
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
-  { path: '**', redirectTo: '/login' }
+  {
+    path: '',
+    component: LayoutComponent,
+    canActivate: [AuthGuard],
+    children: [
+      { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
+      { path: 'dashboard', component: DashboardComponent },
+      { path: 'costes', component: CostesComponent },
+      { path: 'inventario', component: InventarioComponent },
+      { path: 'responsables', component: ResponsablesComponent },
+      { path: 'centros', component: CentrosComponent },
+      { path: 'desviaciones', component: DeviationsComponent },
+      { path: 'incidents', component: IncidentsComponent },
+      { path: 'asistente', component: AsistenteComponent },
+      { path: 'supervisores', component: SupervisoresComponent },
+    ],
+  },
+  { path: '**', redirectTo: '/dashboard' },
 ];

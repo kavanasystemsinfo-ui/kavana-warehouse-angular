@@ -1,16 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService } from '../../services/api.service';
-
-interface SupervisorDemo {
-  id_usuario: number;
-  nombre: string;
-  email: string;
-  rol: string;
-  expira_en: string | null;
-  session_id: string;
-}
+import { ApiService, SupervisorDemo } from '../../services/api.service';
 
 @Component({
   selector: 'app-supervisores',
@@ -68,12 +59,8 @@ export class SupervisoresComponent implements OnInit {
     });
   }
 
-  trackById(index: number, item: any): number {
-    return item.id ?? index;
-  }
-  getBarWidth(value: number | null): number {
-    return value !== null ? Math.min(value, 100) : 0;
-  }
+
+
   formatDate(dateString: string | null): string {
     if (!dateString) return '—';
     const d = new Date(dateString);

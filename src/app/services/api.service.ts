@@ -1,7 +1,14 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+
+// Cliente API del panel KAVANA WAREHOUSE (migrado del dashboard React).
+// Endpoints verificados contra src/app.js del backend (2026-08-31):
+// - NO existe /auth/refresh ni /auth/logout: el logout es local (borrar tokens).
+// - Supervisores demo viven en /supervisores (GET con ?session_id=, POST para crear),
+//   NO en /supervisores/demo (lo que usaba la primera versión de este repo, 404).
+// - GET /incidencias devuelve solo { incidencias } (no { total }): total se calcula.
 
 export interface AuthResponse {
   token: string;
@@ -44,7 +51,7 @@ export interface Centro {
       rol: string;
       numero_empleado?: string;
       telefono?: string;
-    }
+    };
   }>;
   inventarioCentros?: Array<{
     id_centro: number;
@@ -148,6 +155,82 @@ export interface IncidenciasResponse {
   incidencias: Incidencia[];
 }
 
+export interface DeviationItem {
+  centro: { id_centro: number; nombre_centro: string };
+  producto: { id_producto: number; nombre_producto: string; unidad_medida: string; coste_unitario: number };
+  cantidad_actual: number;
+  stock_fisico: number | null;
+  desviacion: number | null;
+  porcentaje_desviacion: number | null;
+  coste_desviacion: number;
+  estado: 'falta' | 'sobra' | 'pendiente' | 'normal';
+}
+
+export interface DeviationsData {
+  mes: string;
+  total_desviaciones: number;
+  desviaciones: DeviationItem[];
+}
+
+export interface CosteCentro {
+  centro: { id_centro: number; nombre_centro: string };
+  coste_material: number;
+  presupuesto_mensual: number;
+  porcentaje_usado: number | null;
+  diferencia: number | null;
+  estado: 'verde' | 'ambar' | 'rojo' | 'sin_presupuesto';
+}
+
+export interface CostesData {
+  mes: string;
+  total_coste: number;
+  total_presupuesto: number;
+  centros: CosteCentro[];
+}
+
+export interface Responsable {
+  id_usuario: number;
+  nombre: string;
+  email: string;
+  rol: string;
+  telefono?: string | null;
+  centros_asignados?: Array<{ id_centro: number; nombre_centro: string }>;
+}
+
+export interface SupervisorDemo {
+  id_usuario: number;
+  nombre: string;
+  email: string;
+  rol: string;
+  session_id: string | null;
+  expira_en: string | null;
+}
+
+export interface Recuento {
+  id_movimiento: number;
+  fecha_hora: string;
+  responsable: { id_usuario: number; nombre: string };
+  centro: { id_centro: number; nombre_centro: string };
+  producto: { id_producto: number; nombre_producto: string; unidad_medida: string };
+  cantidad_nueva: number;
+}
+
+export interface PurchaseProposal {
+  fecha_generacion: string;
+  total_articulos: number;
+  total_unidades: number;
+  total_coste_estimado: number;
+  propuestas: Array<{
+    centro: { id_centro: number; nombre_centro: string };
+    producto: { id_producto: number; nombre_producto: string; unidad_medida: string; coste_unitario: number };
+    stock_actual: number;
+    stock_minimo: number;
+    deficit: number;
+    cantidad_pedido: number;
+    coste_estimado: number;
+  }>;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -156,19 +239,25 @@ export class ApiService {
 
   constructor(private http: HttpClient) {}
 
-  private handleError(error: any) {
+  // Error handler sin window.alert (el alert bloqueaba el hilo del navegador
+  // y rompía las pruebas e2e; cada componente muestra su propio error en DOM).
+  private handleError(error: HttpErrorResponse) {
     let errorMessage = 'Error desconocido';
     if (error.error instanceof ErrorEvent) {
-      // Client-side error
-      errorMessage = `Error: ${error.error.message}`;
+      errorMessage = `Error de conexión. Por favor, inténtalo de nuevo.`;
+    } else if (error.status === 401) {
+      errorMessage = error.error?.error || 'Su sesión ha expirado o no tiene acceso. Por favor, inicie sesión de nuevo.';
+    } else if (error.status === 403) {
+      errorMessage = error.error?.error || 'No tiene permisos para realizar esta acción.';
+    } else if (error.status === 0) {
+      errorMessage = 'Error de conexión. Por favor, inténtalo de nuevo cuando tengas cobertura.';
     } else {
-      // Server-side error
-      errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+      errorMessage = error.error?.error || `Error del servidor (${error.status}).`;
     }
-    window.alert(errorMessage);
     return throwError(() => new Error(errorMessage));
   }
 
+  // --- Auth ---
   login(email: string, password: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/auth/login`, { email, password })
       .pipe(
@@ -181,19 +270,47 @@ export class ApiService {
       );
   }
 
-  logout(): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/auth/logout`, {})
+  // Logout local: el backend no expone POST /auth/logout (verificado en app.js).
+  logout(): void {
+    this.clearTokens();
+  }
+
+  isLoggedIn(): boolean {
+    return this.getStoredUser() !== null && this.getAccessToken() !== null;
+  }
+
+  // Visitante de la demo: supervisor con session_id (24h) o la cuenta demo
+  // (warehouse/kavana). Lo existente es solo lectura; puede CREAR cosas nuevas
+  // que caducan en 24h.
+  esVisita(): boolean {
+    const u = this.getStoredUser();
+    return Boolean(u?.session_id || u?.demo);
+  }
+
+  // --- Dashboard ---
+  getConsumption(filters?: { centro?: number; producto?: number; desde?: string; hasta?: string }): Observable<ConsumptionData> {
+    const params = new URLSearchParams();
+    if (filters?.centro) params.set('centro', String(filters.centro));
+    if (filters?.producto) params.set('producto', String(filters.producto));
+    if (filters?.desde) params.set('desde', filters.desde);
+    if (filters?.hasta) params.set('hasta', filters.hasta);
+    const qs = params.toString();
+    return this.http.get<ConsumptionData>(`${this.apiUrl}/dashboard/consumption${qs ? `?${qs}` : ''}`)
       .pipe(catchError(this.handleError));
   }
 
+  getAlerts(): Observable<AlertsData> {
+    return this.http.get<AlertsData>(`${this.apiUrl}/dashboard/alerts`)
+      .pipe(catchError(this.handleError));
+  }
+
+  // --- Stock ---
   getInventario(centroId?: number): Observable<InventarioItem[]> {
     let url = `${this.apiUrl}/stock/inventory`;
-    if (centroId) {
-      url += `?centro=${centroId}`;
-    }
+    if (centroId) url += `?centro=${centroId}`;
     return this.http.get<{ inventario: InventarioItem[] }>(url)
       .pipe(
-        map(response => response.inventario),
+        map((response) => response.inventario),
         catchError(this.handleError)
       );
   }
@@ -201,7 +318,7 @@ export class ApiService {
   getCentros(): Observable<Centro[]> {
     return this.http.get<{ centros: Centro[] }>(`${this.apiUrl}/centros`)
       .pipe(
-        map(response => response.centros),
+        map((response) => response.centros),
         catchError(this.handleError)
       );
   }
@@ -219,19 +336,17 @@ export class ApiService {
   getCategorias(): Observable<Categoria[]> {
     return this.http.get<{ categorias: Categoria[] }>(`${this.apiUrl}/categorias`)
       .pipe(
-        map(response => response.categorias),
+        map((response) => response.categorias),
         catchError(this.handleError)
       );
   }
 
-  getConsumos(centroId?: number): Observable<any[]> {
+  getConsumos(centroId?: number): Observable<ConsumptionData['movimientos']> {
     let url = `${this.apiUrl}/consumos`;
-    if (centroId) {
-      url += `?centro=${centroId}`;
-    }
-    return this.http.get<{ consumos: any[] }>(url)
+    if (centroId) url += `?centro=${centroId}`;
+    return this.http.get<{ consumos: ConsumptionData['movimientos'] }>(url)
       .pipe(
-        map(response => response.consumos),
+        map((response) => response.consumos),
         catchError(this.handleError)
       );
   }
@@ -239,7 +354,7 @@ export class ApiService {
   getProductos(): Observable<Producto[]> {
     return this.http.get<{ productos: Producto[] }>(`${this.apiUrl}/productos`)
       .pipe(
-        map(response => response.productos || []),
+        map((response) => response.productos || []),
         catchError(this.handleError)
       );
   }
@@ -283,12 +398,11 @@ export class ApiService {
       .pipe(catchError(this.handleError));
   }
 
-  getDeviations(filters?: { centro?: number }): Observable<any> {
+  // --- Deviations ---
+  getDeviations(filters?: { centro?: number }): Observable<DeviationsData> {
     let url = `${this.apiUrl}/dashboard/deviations`;
-    if (filters?.centro) {
-      url += `?centro=${filters.centro}`;
-    }
-    return this.http.get(url)
+    if (filters?.centro) url += `?centro=${filters.centro}`;
+    return this.http.get<DeviationsData>(url)
       .pipe(catchError(this.handleError));
   }
 
@@ -302,18 +416,17 @@ export class ApiService {
       .pipe(catchError(this.handleError));
   }
 
-
-  getPurchaseProposal(centroId?: number): Observable<any> {
+  // --- Purchases ---
+  getPurchaseProposal(centroId?: number): Observable<PurchaseProposal> {
     let url = `${this.apiUrl}/purchases/proposal`;
-    if (centroId) {
-      url += `?centro=${centroId}`;
-    }
-    return this.http.get(url)
+    if (centroId) url += `?centro=${centroId}`;
+    return this.http.get<PurchaseProposal>(url)
       .pipe(catchError(this.handleError));
   }
 
-  getCostes(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/dashboard/costes`)
+  // --- Costes ---
+  getCostes(): Observable<CostesData> {
+    return this.http.get<CostesData>(`${this.apiUrl}/dashboard/costes`)
       .pipe(catchError(this.handleError));
   }
 
@@ -322,10 +435,11 @@ export class ApiService {
       .pipe(catchError(this.handleError));
   }
 
-  getResponsables(): Observable<any[]> {
-    return this.http.get<{ usuarios: any[] }>(`${this.apiUrl}/asignaciones/users`)
+  // --- Responsables ---
+  getResponsables(): Observable<Responsable[]> {
+    return this.http.get<{ usuarios: Responsable[] }>(`${this.apiUrl}/asignaciones/users`)
       .pipe(
-        map(response => (response.usuarios || []).filter((u: any) => u.rol === 'responsable')),
+        map((response) => (response.usuarios || []).filter((u) => u.rol === 'responsable')),
         catchError(this.handleError)
       );
   }
@@ -335,24 +449,60 @@ export class ApiService {
       .pipe(catchError(this.handleError));
   }
 
-  createResponsable(data: { nombre: string; email: string; password: string; telefono?: string }): Observable<{ usuario: any }> {
-    return this.http.post<{ usuario: any }>(`${this.apiUrl}/usuarios`, data)
+  createResponsable(data: { nombre: string; email: string; password: string; telefono?: string }): Observable<{ usuario: Responsable }> {
+    return this.http.post<{ usuario: Responsable }>(`${this.apiUrl}/usuarios`, data)
       .pipe(catchError(this.handleError));
   }
 
-  getRecuentos(centroId?: number): Observable<any[]> {
+  // --- Recuentos ---
+  getRecuentos(centroId?: number): Observable<Recuento[]> {
     let url = `${this.apiUrl}/recuentos`;
-    if (centroId) {
-      url += `?centro=${centroId}`;
-    }
-    return this.http.get<{ recuentos: any[] }>(url)
+    if (centroId) url += `?centro=${centroId}`;
+    return this.http.get<{ recuentos: Recuento[] }>(url)
       .pipe(
-        map(response => response.recuentos || []),
+        map((response) => response.recuentos || []),
         catchError(this.handleError)
       );
   }
 
-  // Session ID for demo (same logic as React)
+  // --- Incidencias ---
+  getIncidencias(filters?: { centro?: number; estado?: string; categoria?: string; desde?: string; hasta?: string }): Observable<IncidenciasResponse> {
+    let url = `${this.apiUrl}/incidencias`;
+    const params = new URLSearchParams();
+    if (filters?.centro) params.set('centro', String(filters.centro));
+    if (filters?.estado) params.set('estado', filters.estado);
+    if (filters?.categoria) params.set('categoria', filters.categoria);
+    if (filters?.desde) params.set('desde', filters.desde);
+    if (filters?.hasta) params.set('hasta', filters.hasta);
+    if (params.toString()) url += `?${params.toString()}`;
+    // El backend devuelve solo { incidencias } (sin total): se calcula aquí.
+    return this.http.get<{ incidencias: Incidencia[] }>(url)
+      .pipe(
+        map((response) => ({ incidencias: response.incidencias, total: response.incidencias.length })),
+        catchError(this.handleError)
+      );
+  }
+
+  updateIncidencia(id: number, data: { estado: string }): Observable<{ message: string; incidencia: Incidencia }> {
+    return this.http.put<{ message: string; incidencia: Incidencia }>(`${this.apiUrl}/incidencias/${id}`, data)
+      .pipe(catchError(this.handleError));
+  }
+
+  // --- Supervisores demo (endpoints reales /supervisores, NO /supervisores/demo) ---
+  getSupervisoresDemo(sessionId: string): Observable<SupervisorDemo[]> {
+    return this.http.get<{ supervisores: SupervisorDemo[] }>(`${this.apiUrl}/supervisores?session_id=${encodeURIComponent(sessionId)}`)
+      .pipe(
+        map((response) => response.supervisores || []),
+        catchError(this.handleError)
+      );
+  }
+
+  createSupervisorDemo(payload: { nombre: string; email: string; password: string; session_id: string }): Observable<{ supervisor: SupervisorDemo }> {
+    return this.http.post<{ supervisor: SupervisorDemo }>(`${this.apiUrl}/supervisores`, payload)
+      .pipe(catchError(this.handleError));
+  }
+
+  // --- Session ID (etiqueta de visitante para la demo) ---
   getSessionId(): string {
     const KEY = 'kavana_session_id';
     let sid = localStorage.getItem(KEY);
@@ -363,7 +513,7 @@ export class ApiService {
     return sid;
   }
 
-  // Auth token handling (simplified; in a real app you'd use an interceptor)
+  // --- Token storage ---
   getAccessToken(): string | null {
     return localStorage.getItem('dashboard_access_token');
   }
@@ -395,41 +545,5 @@ export class ApiService {
     } catch {
       return null;
     }
-  }
-
-  // Add to ApiService class:
-  getIncidencias(filters?: { centro?: number; estado?: string; categoria?: string; desde?: string; hasta?: string }): Observable<IncidenciasResponse> {
-    let url = `${this.apiUrl}/incidencias`;
-    const params = new URLSearchParams();
-    if (filters?.centro) params.set('centro', String(filters.centro));
-    if (filters?.estado) params.set('estado', filters.estado);
-    if (filters?.categoria) params.set('categoria', filters.categoria);
-    if (filters?.desde) params.set('desde', filters.desde);
-    if (filters?.hasta) params.set('hasta', filters.hasta);
-    if (params.toString()) {
-      url += `?${params.toString()}`;
-    }
-    return this.http.get<IncidenciasResponse>(url)
-      .pipe(catchError(this.handleError));
-  }
-
-  updateIncidencia(id: number, data: { estado: string }): Observable<{ message: string; incidencia: Incidencia }> {
-    return this.http.put<{ message: string; incidencia: Incidencia }>(`${this.apiUrl}/incidencias/${id}`, data)
-      .pipe(catchError(this.handleError));
-  }
-
-
-  // --- Supervisores demo ---
-  getSupervisoresDemo(sessionId: string): Observable<any[]> {
-    return this.http.get<{ supervisores: any[] }>(`${this.apiUrl}/supervisores/demo?session_id=${sessionId}`)
-      .pipe(
-        map(response => response.supervisores || []),
-        catchError(this.handleError)
-      );
-  }
-
-  createSupervisorDemo(payload: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/supervisores/demo`, payload)
-      .pipe(catchError(this.handleError));
   }
 }

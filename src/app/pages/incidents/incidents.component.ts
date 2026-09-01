@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { GuiaAyudaComponent } from '../../components/guia-ayuda/guia-ayuda.component';
 
 interface Centro {
   id_centro: number;
@@ -30,7 +31,7 @@ interface IncidenciasResponse {
 @Component({
   selector: 'app-incidents',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, GuiaAyudaComponent],
   templateUrl: './incidents.component.html',
   styleUrls: ['./incidents.component.scss']
 })
@@ -43,6 +44,7 @@ export class IncidentsComponent implements OnInit {
   filtroCentro = '';
   filtroEstado = '';
   filtroCategoria = '';
+  visita = false;
   // We don't have periodo from context; we'll ignore for now (show all time)
   // In a real app, we'd have a date range service or use a separate servicio.
 
@@ -72,6 +74,7 @@ export class IncidentsComponent implements OnInit {
   constructor(private apiService: ApiService) {}
 
   ngOnInit(): void {
+    this.visita = this.apiService.esVisita();
     this.loadData();
   }
 
@@ -143,9 +146,7 @@ export class IncidentsComponent implements OnInit {
     return inc.id_incidencia;
   }
 
-  getBarWidth(value: number | null): number {
-    return value !== null ? Math.min(value, 100) : 0;
-  }
+
   formatDate(dateString: string): string {
     return new Date(dateString).toLocaleString("es-ES");
   }

@@ -2,11 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, Centro, Producto } from '../../services/api.service';
+import { fmtNum, fmtEuro } from '../../lib/format';
+import { GuiaAyudaComponent } from '../../components/guia-ayuda/guia-ayuda.component';
 
 @Component({
   selector: 'app-centros',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, GuiaAyudaComponent],
   templateUrl: './centros.component.html',
   styleUrls: ['./centros.component.scss']
 })
@@ -37,6 +39,10 @@ export class CentrosComponent implements OnInit {
 
   // For expanded row
   centroAbierto: number | null = null;
+
+  // Formato numérico español (regla Jorge).
+  fmtNum = fmtNum;
+  fmtEuro = fmtEuro;
 
   constructor(private apiService: ApiService) {}
 
@@ -183,11 +189,7 @@ export class CentrosComponent implements OnInit {
     return inv.id_producto;
   }
 
-  getBarWidth(value: number | null): number {
-    return value !== null ? Math.min(value, 100) : 0;
-  }
-  formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleString("es-ES");
-  }
+
+
 
 }

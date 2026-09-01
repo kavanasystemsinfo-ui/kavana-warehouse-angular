@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { fmtNum, fmtEuro } from '../../lib/format';
+import { GuiaAyudaComponent } from '../../components/guia-ayuda/guia-ayuda.component';
 
 interface Responsable {
   id_usuario: number;
@@ -30,7 +32,7 @@ interface Recuento {
 @Component({
   selector: 'app-responsables',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, GuiaAyudaComponent],
   templateUrl: './responsables.component.html',
   styleUrls: ['./responsables.component.scss']
 })
@@ -45,6 +47,10 @@ export class ResponsablesComponent implements OnInit {
   form = { nombre: '', email: '', password: '', telefono: '' };
   editId: number | null = null;
   selected: number[] = [];
+
+  // Formato numérico español (regla Jorge).
+  fmtNum = fmtNum;
+  fmtEuro = fmtEuro;
 
   constructor(private apiService: ApiService) {}
 
@@ -83,9 +89,17 @@ export class ResponsablesComponent implements OnInit {
   }
 
   handleCreate(): void {
-    // In React they default password to 'kavanawarehouse' if empty
-    const password = this.form.password || 'kavanawarehouse';
-    this.apiService.createResponsable({ ...this.form, password }).subscribe({
+    // La contraseña es obligatoria (regla Jorge: nada de contraseñas por defecto
+    // conocidas como 'kavanawarehouse' — bug de la versión React).
+    if (!this.form.nombre || !this.form.email || !this.form.password) {
+      this.msg = 'Nombre, email y contraseña son obligatorios';
+      return;
+    }
+    if (this.form.password.length < 6) {
+      this.msg = 'La contraseña debe tener al menos 6 caracteres';
+      return;
+    }
+    this.apiService.createResponsable({ ...this.form, password: this.form.password }).subscribe({
       next: () => {
         this.showForm = false;
         this.msg = 'Responsable creado';
@@ -135,9 +149,7 @@ export class ResponsablesComponent implements OnInit {
   trackById(index: number, item: any): number {
     return item.id ?? index;
   }
-  getBarWidth(value: number | null): number {
-    return value !== null ? Math.min(value, 100) : 0;
-  }
+
   formatDate(dateString: string): string {
     return new Date(dateString).toLocaleString("es-ES");
   }

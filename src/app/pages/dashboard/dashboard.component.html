@@ -1,19 +1,191 @@
-<div *ngIf="loading">Cargando...</div>
-<div *ngIf="error && !loading" class="alert alert-danger">{{ error }}</div>
+<div class="page-header">
+  <h1 class="page-title">Dashboard de Consumo</h1>
+  <app-guia-ayuda titulo="Dashboard">
+    <p>Esta es la <strong>pantalla principal</strong> con el resumen de todo: cuánto se gasta, alertas y consumo por centro.</p>
+    <h3>¿Qué ves arriba?</h3>
+    <ul>
+      <li><strong>Gasto OPEX Total:</strong> dinero total en material de limpieza este mes.</li>
+      <li><strong>Coste por Centro:</strong> cuánto se gasta en cada lugar.</li>
+      <li><strong>Mermas Totales:</strong> material que falta sin explicación (ver pantalla de Mermas para el detalle).</li>
+    </ul>
+    <h3>¿Las tablas de abajo?</h3>
+    <ul>
+      <li><strong>Consumo por centro:</strong> qué centro gasta más.</li>
+      <li><strong>Alertas de stock:</strong> productos que están por debajo de su mínimo (rojo = crítico, ámbar = aviso).</li>
+    </ul>
+    <p>Puedes filtrar por centro y periodo, y descargar los datos en CSV con el botón de descarga.</p>
+  </app-guia-ayuda>
+</div>
 
-<table *ngIf="!loading && !error && costesData">
-  <thead>
-    <tr>
-      <th>Mes</th>
-      <th>Total Coste</th>
-      <th>Total Presupuesto</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr *ngIf="costesData">
-      <td>{{ costesData.mes }}</td>
-      <td>{{ costesData.total_coste }}</td>
-      <td>{{ costesData.total_presupuesto }}</td>
-    </tr>
-  </tbody>
-</table>
+@if (loading) {
+  <div class="loading"><div class="spinner"></div> Cargando dashboard...</div>
+}
+
+@if (error) {
+  <div class="alert alert-danger">{{ error }}</div>
+}
+
+@if (!loading && !error) {
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card primary">
+      <span class="stat-label">Gasto OPEX Total</span>
+      <span class="stat-value">{{ fmtEuro(consumption?.total_gasto_euros) }} €</span>
+      <span class="stat-sub">{{ fmtNum(consumption?.total_consumo_unidades) }} unidades consumidas</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Movimientos</span>
+      <span class="stat-value">{{ fmtNum(consumption?.total_movimientos) }}</span>
+      <span class="stat-sub">registros de consumo</span>
+    </div>
+    <div class="stat-card danger">
+      <span class="stat-label">Alertas Críticas</span>
+      <span class="stat-value">{{ alertasCriticas }}</span>
+      <span class="stat-sub">stock agotado ahora</span>
+    </div>
+    <div class="stat-card warning">
+      <span class="stat-label">Advertencias</span>
+      <span class="stat-value">{{ alertasAdvertencias }}</span>
+      <span class="stat-sub">stock por debajo del mínimo ahora</span>
+    </div>
+  </div>
+
+  <!-- Evolución mensual -->
+  @if (consumption && consumption.evolucion_mensual && consumption.evolucion_mensual.length > 0) {
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Evolución de consumo (últimos meses)</h2>
+      </div>
+      <div style="display: flex; align-items: flex-end; gap: 12px; height: 200px; padding: 0.5rem 0; overflow-x: auto;">
+        @for (p of evolucionBars(); track p.mes) {
+          <div style="flex: 1 0 auto; min-width: 46px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <span style="font-size: .7rem; color: var(--gray-500); white-space: nowrap; flex-shrink: 0;">{{ fmtNum(p.unidades) }}</span>
+            <div style="width: 100%; max-width: 56px; height: {{ p.altura }}px; background: var(--primary); border-radius: 6px 6px 0 0; min-height: 8px; flex-shrink: 0;"></div>
+            <span style="font-size: .8rem; font-weight: 600; white-space: nowrap; flex-shrink: 0;">{{ p.mes }}</span>
+          </div>
+        }
+      </div>
+      <p style="color: var(--gray-500); font-size: .85rem; margin: 0.5rem 0 0;">
+        Consumo histórico por mes: se ve la trayectoria real de la empresa, no solo el último día.
+      </p>
+    </div>
+  }
+
+  <!-- Filters -->
+  <div class="card">
+    <div class="filters-bar">
+      <div class="form-group">
+        <label class="form-label">Centro</label>
+        <select class="form-select" [(ngModel)]="filtroCentro" (ngModelChange)="onFilterChange()">
+          <option value="">Todos</option>
+          @for (c of centros; track c.id_centro) {
+            <option [value]="c.id_centro">{{ c.nombre_centro }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Producto</label>
+        <select class="form-select" [(ngModel)]="filtroProducto" (ngModelChange)="onFilterChange()">
+          <option value="">Todos</option>
+          @for (p of productos; track p.id_producto) {
+            <option [value]="p.id_producto">{{ p.nombre_producto }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Consumption by Center -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Consumo por Centro</h2>
+      @if (consumption && consumption.resumen_por_centro.length > 0) {
+        <button class="btn btn-outline btn-sm" (click)="exportConsumoCentro()">Exportar CSV</button>
+      }
+    </div>
+    @if (consumption && consumption.resumen_por_centro.length > 0) {
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Centro</th>
+              <th>Presupuesto</th>
+              <th>Gasto OPEX</th>
+              <th>Unidades</th>
+              <th>Movimientos</th>
+              <th>Productos</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (grupo of consumption.resumen_por_centro; track grupo.centro.id_centro) {
+              <tr>
+                <td><strong>{{ grupo.centro.nombre_centro }}</strong></td>
+                <td>
+                  <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <span>{{ fmtEuro(grupo.presupuesto_mensual) }} €</span>
+                    <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                      <div [style.width.%]="MathMin(100, grupo.porcentaje_consumido)" [style.background]="porcentajeColor(grupo.porcentaje_consumido)" style="height: 100%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <small style="font-size: 11px; color: var(--gray-500);">{{ fmtNum(grupo.porcentaje_consumido) }}% consumido</small>
+                  </div>
+                </td>
+                <td style="font-weight: 600;">{{ fmtEuro(grupo.gasto_total_euros) }} €</td>
+                <td>{{ fmtNum(grupo.total_consumo_unidades) }}</td>
+                <td>{{ fmtNum(grupo.movimientos) }}</td>
+                <td>
+                  @for (p of grupo.productos; track p.id_producto) {
+                    <span class="badge badge-info" style="margin-right: 0.25rem; margin-bottom: 0.25rem;">
+                      {{ p.nombre_producto }}: {{ fmtNum(p.cantidad) }} ({{ fmtEuro(p.gasto_euros) }} €)
+                    </span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p style="color: var(--gray-500); padding: 1rem 0;">No hay datos de consumo para los filtros seleccionados.</p>
+    }
+  </div>
+
+  <!-- Recent Movements -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Últimos Movimientos</h2>
+      @if (consumption && consumption.movimientos.length > 0) {
+        <button class="btn btn-outline btn-sm" (click)="exportMovimientos()">Exportar CSV</button>
+      }
+    </div>
+    @if (consumption && consumption.movimientos.length > 0) {
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Centro</th>
+              <th>Producto</th>
+              <th>Cantidad</th>
+              <th>Gasto</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of consumption.movimientos.slice(0, 50); track m.id_movimiento) {
+              <tr>
+                <td>{{ formatFecha(m.fecha_hora) }}</td>
+                <td>{{ m.centro.nombre_centro }}</td>
+                <td>{{ m.producto.nombre_producto }}</td>
+                <td style="color: var(--danger);">{{ fmtNum(m.cantidad) }}</td>
+                <td style="color: var(--danger); font-weight: 600;">{{ fmtEuro(m.gasto_euros) }} €</td>
+                <td>{{ m.usuario.nombre }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p style="color: var(--gray-500); padding: 1rem 0;">No hay movimientos recientes.</p>
+    }
+  </div>
+}

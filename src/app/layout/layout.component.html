@@ -1,1 +1,112 @@
-<router-outlet></router-outlet>
+<div class="app-layout">
+  <!-- Overlay oscuro en móvil cuando el sidebar está abierto -->
+  @if (sidebarOpen) {
+    <div class="sidebar-overlay" (click)="sidebarOpen = false"></div>
+  }
+
+  <!-- Botón hamburguesa — siempre visible cuando el sidebar está cerrado -->
+  <button
+    class="sidebar-toggle"
+    [class.is-open]="sidebarOpen"
+    (click)="sidebarOpen = !sidebarOpen"
+    [attr.aria-label]="sidebarOpen ? 'Cerrar menú' : 'Abrir menú'"
+    type="button"
+  >
+    <span class="hamburger-line"></span>
+    <span class="hamburger-line"></span>
+    <span class="hamburger-line"></span>
+  </button>
+
+  <aside class="sidebar" [class.sidebar--open]="sidebarOpen">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <img src="logo.png" alt="Kavana" style="width: 36px; height: 36px; border-radius: 8px;">
+        <div>
+          <h1>KAVANA WAREHOUSE</h1>
+          <span>Panel de Supervisor</span>
+        </div>
+      </div>
+      <button
+        class="sidebar-close"
+        (click)="sidebarOpen = false"
+        aria-label="Cerrar menú"
+        type="button"
+      >✕</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a routerLink="/dashboard" routerLinkActive="active" class="sidebar-link" (click)="closeOnNav()">
+        <span class="sidebar-link-icon">📊</span> Dashboard
+      </a>
+      <a routerLink="/centros" routerLinkActive="active" class="sidebar-link" (click)="closeOnNav()">
+        <span class="sidebar-link-icon">🏢</span> Centros
+      </a>
+      <a routerLink="/responsables" routerLinkActive="active" class="sidebar-link" (click)="closeOnNav()">
+        <span class="sidebar-link-icon">🧑‍💼</span> Responsables
+      </a>
+      <a routerLink="/supervisores" routerLinkActive="active" class="sidebar-link" (click)="closeOnNav()">
+        <span class="sidebar-link-icon">🛠️</span> Supervisores demo
+      </a>
+      <a routerLink="/desviaciones" routerLinkActive="active" class="sidebar-link" (click)="closeOnNav()">
+        <span class="sidebar-link-icon">⚠️</span> Desviaciones
+      </a>
+      <a routerLink="/costes" routerLinkActive="active" class="sidebar-link" (click)="closeOnNav()">
+        <span class="sidebar-link-icon">💶</span> Costes por centro
+      </a>
+      <a routerLink="/inventario" routerLinkActive="active" class="sidebar-link" (click)="closeOnNav()">
+        <span class="sidebar-link-icon">📦</span> Inventario
+      </a>
+      <a routerLink="/incidents" routerLinkActive="active" class="sidebar-link" (click)="closeOnNav()">
+        <span class="sidebar-link-icon">🛠️</span> Incidencias
+      </a>
+      <a routerLink="/asistente" routerLinkActive="active" class="sidebar-link" (click)="closeOnNav()">
+        <span class="sidebar-link-icon">💬</span> Asistente técnico
+      </a>
+
+      <!-- Contacto desplegable -->
+      <div class="sidebar-contacto">
+        <button
+          type="button"
+          class="sidebar-link sidebar-contacto-toggle"
+          [class.active]="contactoOpen"
+          (click)="contactoOpen = !contactoOpen"
+          [attr.aria-expanded]="contactoOpen"
+        >
+          <span class="sidebar-link-icon">📬</span>
+          <span style="flex: 1; text-align: left;">Contacto</span>
+          <span style="font-size: 10px;">{{ contactoOpen ? '▲' : '▼' }}</span>
+        </button>
+        @if (contactoOpen) {
+          <div class="sidebar-contacto-opciones">
+            <a class="sidebar-link" href="mailto:kavanasystems.info@gmail.com">📧 Email</a>
+            <a class="sidebar-link" href="https://www.linkedin.com/in/kavanasystems/" target="_blank" rel="noopener noreferrer">💼 LinkedIn</a>
+            <a class="sidebar-link" href="https://wa.me/34633422461" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+          </div>
+        }
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <strong>{{ api.getStoredUser()?.nombre }}</strong>
+        @if (api.getStoredUser()?.rol === 'supervisor') {
+          <span class="badge badge-info" style="margin-top: 0.25rem;">Supervisor</span>
+        }
+        @if (api.getStoredUser()?.session_id) {
+          <span class="badge" style="margin-top: 0.25rem; background: var(--warning); color: #fff;">🔒 Solo lectura (demo)</span>
+        }
+        @if (api.getStoredUser()?.demo) {
+          <span class="badge" style="margin-top: 0.25rem; background: var(--primary); color: #fff;">🌱 Demo: crea y caduca en 24h</span>
+        }
+      </div>
+      <button class="btn btn-outline btn-sm" style="color: white; border-color: #4b5563; width: 100%; margin-top: 0.5rem;" (click)="handleLogout()">
+        Cerrar sesión
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-content" (click)="sidebarOpen = false">
+    <app-periodo-selector></app-periodo-selector>
+    <router-outlet></router-outlet>
+  </main>
+</div>

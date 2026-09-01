@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { fmtNum, fmtEuro } from '../../lib/format';
+import { GuiaAyudaComponent } from '../../components/guia-ayuda/guia-ayuda.component';
 
 interface Centro {
   id_centro: number;
@@ -35,7 +37,7 @@ interface DeviationsData {
 @Component({
   selector: 'app-deviations',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, GuiaAyudaComponent],
   templateUrl: './deviations.component.html',
   styleUrls: ['./deviations.component.scss']
 })
@@ -49,10 +51,16 @@ export class DeviationsComponent implements OnInit {
   valorConteo = '';
   guardando = false;
   resetMsg = '';
+  visita = false;
+
+  // Formato numérico español (regla Jorge): punto de miles, coma decimal.
+  fmtNum = fmtNum;
+  fmtEuro = fmtEuro;
 
   constructor(private apiService: ApiService) {}
 
   ngOnInit(): void {
+    this.visita = this.apiService.esVisita();
     this.loadData();
   }
 
@@ -145,18 +153,12 @@ export class DeviationsComponent implements OnInit {
   }
 
   // For tracking in ngFor
-  trackById(_: number, item: DeviationItem): string {
-    return `${item.centro.id_centro}-${item.producto.id_producto}`;
-  }
+
   abs(v: number): number {
     return Math.abs(v);
   }
 
-  getBarWidth(value: number | null): number {
-    return value !== null ? Math.min(value, 100) : 0;
-  }
-  formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleString("es-ES");
-  }
+
+
 
 }

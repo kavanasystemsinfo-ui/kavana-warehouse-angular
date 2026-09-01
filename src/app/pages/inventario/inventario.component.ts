@@ -1,20 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService } from '../../services/api.service';
-
-interface Producto {
-  id_producto: number;
-  nombre_producto: string;
-  unidad_medida: string;
-  coste_unitario: number;
-  stock_minimo_alerta: number;
-}
+import { ApiService, Producto } from '../../services/api.service';
+import { fmtNum, fmtEuro } from '../../lib/format';
+import { downloadCsv } from '../../lib/csv';
+import { GuiaAyudaComponent } from '../../components/guia-ayuda/guia-ayuda.component';
 
 @Component({
   selector: 'app-inventario',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, GuiaAyudaComponent],
   templateUrl: './inventario.component.html',
   styleUrls: ['./inventario.component.scss']
 })
@@ -47,17 +42,15 @@ export class InventarioComponent implements OnInit {
   // Borrar
   borrando: number | null = null;
 
+  // Formato numérico español (regla Jorge).
+  fmtNum = fmtNum;
+  fmtEuro = fmtEuro;
+
   constructor(private apiService: ApiService) {}
 
   ngOnInit(): void {
+    this.visita = this.apiService.esVisita();
     this.loadData();
-    this.checkVisita();
-  }
-
-  checkVisita(): void {
-    // Simplified: we don't have session logic here; assume false for demo.
-    // In a real app, we would check localStorage for session_id or demo flag.
-    this.visita = false;
   }
 
   loadData(): void {
@@ -159,7 +152,7 @@ export class InventarioComponent implements OnInit {
   }
 
   handleDelete(p: Producto): void {
-    if (!confirm(`¿Borrar \"${p.nombre_producto}\" del catálogo?`)) return;
+    if (!confirm(`¿Borrar "${p.nombre_producto}" del catálogo?`)) return;
     this.borrando = p.id_producto;
     this.apiService.deleteProducto(p.id_producto).subscribe({
       next: () => {
@@ -176,22 +169,31 @@ export class InventarioComponent implements OnInit {
   }
 
   handleGenerateProposal(): void {
-    // For simplicity, we'll just call the endpoint and show success.
-    // In a real app, we'd handle CSV export.
     this.loading = true;
     this.error = '';
     this.success = '';
     this.apiService.getPurchaseProposal().subscribe({
-      next: (proposal: any) => {
+      next: (proposal) => {
         if (!proposal || !proposal.propuestas || proposal.propuestas.length === 0) {
           this.success = 'No hay productos por debajo del stock mínimo. No se requiere compra.';
-          setTimeout(() => this.success = '', 4000);
+          setTimeout(() => (this.success = ''), 4000);
           return;
         }
-        // We cannot actually export CSV from Angular without extra libraries, but we can show the data.
-        // For demo, we show a message with total estimated cost.
-        this.success = `Propuesta generada. Coste total estimado: ${proposal.total_coste_estimado ?? 0} €`;
-        setTimeout(() => this.success = '', 5000);
+        // Export CSV real (mismo comportamiento que Inventario.tsx de React).
+        const rows = proposal.propuestas.map((p) => ({
+          centro: p.centro.nombre_centro,
+          producto: p.producto.nombre_producto,
+          unidad: p.producto.unidad_medida,
+          coste_unitario: p.producto.coste_unitario,
+          stock_actual: p.stock_actual,
+          stock_minimo: p.stock_minimo,
+          deficit: p.deficit,
+          cantidad_pedido: p.cantidad_pedido,
+          coste_estimado: p.coste_estimado,
+        }));
+        downloadCsv('propuesta-compra', rows);
+        this.success = `Propuesta generada (${proposal.propuestas.length} artículos, total ${fmtEuro(proposal.total_coste_estimado)} €). Descargada como CSV.`;
+        setTimeout(() => (this.success = ''), 6000);
       },
       error: (err) => {
         this.error = err instanceof Error ? err.message : 'Error al generar propuesta';
@@ -201,15 +203,4 @@ export class InventarioComponent implements OnInit {
       }
     });
   }
-
-  trackById(index: number, item: any): number {
-    return item.id ?? index;
-  }
-  getBarWidth(value: number | null): number {
-    return value !== null ? Math.min(value, 100) : 0;
-  }
-  formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleString("es-ES");
-  }
-
 }

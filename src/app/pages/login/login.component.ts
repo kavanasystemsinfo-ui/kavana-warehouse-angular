@@ -3,11 +3,12 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { CommonModule } from '@angular/common';
 import { ApiService } from '../../services/api.service';
 import { Router } from '@angular/router';
+import { AssistantWidgetComponent } from '../../components/assistant-chat/assistant-widget.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule],
+  imports: [ReactiveFormsModule, CommonModule, AssistantWidgetComponent],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss']
 })
@@ -27,16 +28,34 @@ export class LoginComponent {
     });
   }
 
-  onSubmit() {
+  ngOnInit(): void {
+    // Si ya hay sesión válida, saltar directo al panel (mismo comportamiento
+    // que el Login.tsx de React: redirige si el rol no es limpiador).
+    const existing = this.apiService.getStoredUser();
+    if (existing && existing.rol !== 'limpiador') {
+      this.router.navigate(['/dashboard']);
+      return;
+    }
+    // Mostrar error de sesión expirada si lo dejó el flujo de 401.
+    const expired = localStorage.getItem('auth_error');
+    if (expired) {
+      this.error = expired;
+      localStorage.removeItem('auth_error');
+    }
+  }
+
+  onSubmit(): void {
     if (this.loginForm.valid) {
       this.loading = true;
       this.error = null;
       const { email, password } = this.loginForm.value;
       this.apiService.login(email, password).subscribe({
         next: (response) => {
-          // Store user and tokens already handled in ApiService
           this.loading = false;
-          // Redirect to dashboard or home
+          if (response.usuario.rol === 'limpiador') {
+            this.error = 'Acceso denegado. Este panel es para oficina y supervisores.';
+            return;
+          }
           this.router.navigate(['/dashboard']);
         },
         error: (err) => {
@@ -46,15 +65,4 @@ export class LoginComponent {
       });
     }
   }
-
-  trackById(index: number, item: any): number {
-    return item.id ?? index;
-  }
-  getBarWidth(value: number | null): number {
-    return value !== null ? Math.min(value, 100) : 0;
-  }
-  formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleString("es-ES");
-  }
-
 }

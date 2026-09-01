@@ -3,8 +3,7 @@
     <h1 class="page-title">🧑‍💼 Responsables de centro</h1>
     <div style="display: flex; gap: 8px; align-items: center;">
       <button class="btn btn-primary" (click)="showForm = true">+ Nuevo Responsable</button>
-      <!-- GuiaAyuda placeholder -->
-      <div class="guia-ayuda">
+      <app-guia-ayuda titulo="Responsables">
         <p>Los <strong>responsables</strong> son personas que tú (supervisor) autorizas a entrar en la app móvil para hacer el <strong>recuento físico del stock</strong> de uno o varios centros.</p>
         <h3>¿Cómo crear uno?</h3>
         <p>Pulsa <strong>"+ Nuevo Responsable"</strong>, ponle nombre, email y contraseña. Él usará ese email y password en la app móvil.</p>
@@ -12,7 +11,7 @@
         <p>En su fila pulsa <strong>"Centros"</strong>. Marca con ✓ los centros que puede gestionar y pulsa <strong>Guardar</strong>. Solo verá esos centros en su app.</p>
         <h3>¿Qué es la tabla de recuentos?</h3>
         <p>Abajo verás el <strong>histórico</strong>: cada vez que un responsable cuenta el stock real, queda registrado con su nombre, fecha, centro, producto y cantidad.</p>
-      </div>
+      </app-guia-ayuda>
     </div>
   </div>
 
@@ -31,7 +30,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">Contraseña</label>
-        <input class="form-input" type="password" placeholder="kavanawarehouse" [(ngModel)]="form.password" name="password" />
+        <input class="form-input" type="password" placeholder="mínimo 6 caracteres" [(ngModel)]="form.password" name="password" />
       </div>
       <div class="form-group">
         <label class="form-label">Teléfono</label>
@@ -124,7 +123,7 @@
               <td>{{ r.responsable.nombre }}</td>
               <td>{{ r.centro.nombre_centro }}</td>
               <td>{{ r.producto.nombre_producto }} ({{ r.producto.unidad_medida }})</td>
-              <td><strong>{{ r.cantidad_nueva }}</strong></td>
+              <td><strong>{{ fmtNum(r.cantidad_nueva) }}</strong></td>
             </tr>
           </ng-template>
         </tbody>

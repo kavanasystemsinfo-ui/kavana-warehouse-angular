@@ -3,8 +3,7 @@
     <h1 class="page-title">🏢 Centros de Trabajo</h1>
     <div style="display: flex; gap: 8px; align-items: center;">
       <button class="btn btn-primary" (click)="showForm = true">+ Nuevo Centro</button>
-      <!-- GuiaAyuda placeholder -->
-      <div class="guia-ayuda">
+      <app-guia-ayuda titulo="Centros">
         <p>Esta pantalla muestra <strong>tus centros de trabajo</strong> (los lugares donde limpias) y qué tienen cada uno.</p>
         <h3>¿Qué ves en la tabla?</h3>
         <ul>
@@ -19,7 +18,7 @@
         <h3>¿Cómo añadir productos a un centro?</h3>
         <p>Despliega el centro y pulsa <strong>"➕ Añadir producto"</strong>. Eliges un producto del catálogo general, pones la cantidad inicial y el stock mínimo. Aparece en la lista de productos del centro.</p>
         <p>Para crear un producto nuevo que no exista, ve a la pestaña <strong>Inventario → "➕ Nuevo Producto"</strong>. Se guarda en el catálogo general y luego lo añades desde aquí.</p>
-      </div>
+      </app-guia-ayuda>
     </div>
   </div>
 
@@ -68,7 +67,7 @@
                 <strong>{{ c.nombre_centro || '—' }}</strong>
               </td>
               <td>{{ c.direccion || '—' }}</td>
-              <td>{{ c.presupuesto_mensual ? (c.presupuesto_mensual | number:'1.0-0') + ' €' : '—' }}</td>
+              <td>{{ c.presupuesto_mensual ? fmtEuro(c.presupuesto_mensual) + ' €' : '—' }}</td>
               <td>{{ c._count?.inventarioCentros ?? '—' }}</td>
               <td>
                 <button class="btn btn-sm btn-outline" (click)="abrirEditar(c); $event.stopPropagation()">Editar</button>
@@ -93,7 +92,7 @@
                         <li *ngFor="let inv of centro.inventarioCentros; trackBy: trackByInvId">
                           {{ inv.producto.nombre_producto }} ({{ inv.producto.unidad_medida }})
                           <span class="detalle-stock">
-                            reg. {{ inv.cantidad_actual }}{{ inv.stock_fisico !== null ? ' · fís. ' + inv.stock_fisico : '' }}{{ (inv.stock_fisico !== null && inv.cantidad_actual > inv.stock_fisico) ? ' · 🔴 -' + (inv.cantidad_actual - inv.stock_fisico) : '' }}
+                            reg. {{ fmtNum(inv.cantidad_actual) }}{{ inv.stock_fisico !== null ? ' · fís. ' + fmtNum(inv.stock_fisico) : '' }}{{ (inv.stock_fisico !== null && inv.cantidad_actual > inv.stock_fisico) ? ' · 🔴 -' + fmtNum(inv.cantidad_actual - inv.stock_fisico) : '' }}
                           </span>
                         </li>
                       </ul>

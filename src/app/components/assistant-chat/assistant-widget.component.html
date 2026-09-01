@@ -1,0 +1,19 @@
+<button
+  type="button"
+  (click)="open = !open"
+  aria-label="Abrir asistente técnico"
+  style="position: fixed; right: 24px; bottom: 24px; z-index: 1000; width: 60px; height: 60px; border-radius: 50%; border: none; background: var(--primary); color: #fff; font-size: 26px; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.4);"
+  title="Asistente técnico: pregunta sobre el código de Kavana Warehouse"
+>💬</button>
+
+@if (open) {
+  <div style="position: fixed; right: 24px; bottom: 96px; z-index: 1000; width: 380px; max-width: calc(100vw - 48px); max-height: 70vh; background: #fff; border: 1px solid var(--gray-200); border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,.5); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="padding: 14px 16px; background: var(--gray-100); border-bottom: 1px solid var(--gray-200);">
+      <div style="font-weight: 900; font-size: 14px;">💬 Asistente técnico de Kavana Warehouse</div>
+      <div style="font-size: 11px; color: var(--gray-500); margin-top: 2px;">
+        Responde con la documentación, ADRs y decisiones reales del proyecto.
+      </div>
+    </div>
+    <app-assistant-chat></app-assistant-chat>
+  </div>
+}

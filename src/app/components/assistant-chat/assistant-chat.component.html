@@ -1,0 +1,36 @@
+<div style="flex: 1; overflow-y: auto; padding: 12px; min-height: 200px; font-size: 13px; line-height: 1.5;">
+  @if (msgs.length === 0) {
+    <div style="color: var(--gray-500); font-size: 12px;">
+      <div style="margin-bottom: 10px;">
+        Pregunta lo que quieras sobre el proyecto (arquitectura, decisiones, seguridad, costes...).
+      </div>
+      @for (s of sugerencias; track s) {
+        <button
+          type="button"
+          class="assistant-sugerencia"
+          (click)="enviar(s)"
+        >{{ s }}</button>
+      }
+    </div>
+  }
+  @for (m of msgs; track $index) {
+    <div style="margin-bottom: 10px; text-align: {{ m.role === 'user' ? 'right' : 'left' }};">
+      <div [class]="m.role === 'user' ? 'assistant-msg-user' : 'assistant-msg-bot'" [class.error]="m.error === true">
+        {{ m.text }}
+      </div>
+    </div>
+  }
+  @if (loading) {
+    <div style="color: var(--gray-500); font-size: 12px;">Pensando…</div>
+  }
+</div>
+<form (ngSubmit)="enviar()" style="padding: 10px; border-top: 1px solid var(--gray-200); display: flex; gap: 8px;">
+  <input
+    [(ngModel)]="q"
+    name="q"
+    placeholder="Pregunta sobre el proyecto…"
+    maxlength="500"
+    style="flex: 1; padding: 10px 12px; background: var(--gray-100); border: 1px solid var(--gray-200); border-radius: 8px; color: var(--gray-800); font-size: 13px;"
+  />
+  <button type="submit" [disabled]="loading" style="padding: 10px 16px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: 800; cursor: pointer;">→</button>
+</form>
