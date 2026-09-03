@@ -42,3 +42,7 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Angular dev server (ng serve) runtime artefacts
+ng.log
+ng.pid
