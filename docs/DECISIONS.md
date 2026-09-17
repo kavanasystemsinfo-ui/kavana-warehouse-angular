@@ -11,9 +11,17 @@
 | 007 | [Rol limpiador solo lectura](adr/ADR-007-modo-visita-solo-lectura.md) | Aceptado | 2026-08-31 |
 | 008 | [Periodo por parámetro](adr/ADR-008-periodo-por-parametro.md) | Aceptado | 2026-08-31 |
 | 009 | [Limpieza código muerto](adr/ADR-009-limpieza-codigo-muerto.md) | Aceptado | 2026-08-31 |
+| 010 | [Coste cero y decisiones por presupuesto](adr/ADR-010-coste-cero-decisiones-presupuesto.md) | Aceptado | 2026-09-17 |
 
 ## Decisiones descartadas
 
 - **Supervisores en `/supervisores/demo`** → 404, migrado a `/supervisores` (ADR-004).
 - **Password vacía en creación** → riesgo de seguridad, siempre obligatoria (ADR-006).
 - **`window.alert` para errores** → bloquea hilo, eliminado (ADR-003).
+
+## Encuadre de coste
+
+Las partidas decididas por presupuesto (alojamiento, multi-cliente,
+autenticación, roles, estado, tests/CI, asistente) están en el ADR-010 y
+resumidas en el `README.md` → «💰 Cómo está construido y cómo lo construiría con
+presupuesto».

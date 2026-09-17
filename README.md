@@ -45,6 +45,59 @@ un proyecto de portafolio para postulaciones que piden Angular.
 - Node.js >= 18
 - Backend: Node/Express + Prisma + PostgreSQL (repo `Kavana-Warehouse` original)
 
+## 💰 Cómo está construido y cómo lo construiría con presupuesto
+
+Este repo es una pieza de portafolio con **un solo usuario real: su autor**. Está
+construida para costar prácticamente 0 €/mes, así que varias decisiones no son
+las que tomaría en un producto en producción: son las que caben en un
+presupuesto cero. Aquí queda escrito qué se decidió por presupuesto y qué
+cambiaría con usuarios reales y presupuesto, sin disimular las limitaciones.
+(«Presupuesto» en esta sección es el coste del proyecto, no el presupuesto
+mensual por centro que gestiona la propia aplicación.)
+
+- **Alojamiento y entorno:** el repo contiene solo el cliente Angular; no hay
+  manifiesto de despliegue ni `Dockerfile`, y el build de producción se sirve
+  como estáticos por una URL pública, con el backend del repo `Kavana-Warehouse`
+  detrás. Con usuarios reales: hosting gestionado, dominio propio, entorno de
+  staging separado y monitorización de errores.
+- **Base de datos y multi-cliente:** un único conjunto de datos de demostración
+  (el que crea el seed del backend, con `/demo/reset` para volver a dejarlo
+  limpio) y los visitantes entran con cuentas demo. Con usuarios reales:
+  aislamiento por cliente, migraciones versionadas y copias de seguridad
+  automáticas. No hay nada de eso porque cada cliente extra encarece la
+  infraestructura.
+- **Autenticación:** JWT en `localStorage` con caducidad de 2 h y logout local
+  (ADR-001), porque el backend no expone `/auth/logout` ni `/auth/refresh` y
+  montar refresh con revocación de sesiones es trabajo de backend que hoy no
+  tiene uso. Con usuarios reales: refresh tokens, cookies `httpOnly`, rotación y
+  revocación de sesiones, y sesión más corta.
+- **Usuarios y roles:** los supervisores demo se crean con caducidad de 24 h y
+  `session_id`, y en modo visita las acciones de escritura se ocultan en la UI
+  (ADR-007) en lugar de rechazarse en el servidor. Con usuarios reales:
+  gestión de usuarios y roles de verdad, con permisos aplicados en el backend
+  (lo que no se ve en la interfaz no es seguridad).
+- **Estado y UI:** sin librería de estado global (`PeriodoService` con
+  `BehaviorSubject`) y sin librería de componentes de terceros; los estilos son
+  el SCSS portado del panel React. Con usuarios reales: valorar SignalStore o
+  NgRx, una librería de componentes accesible (teclado, foco, ARIA) y soporte
+  multi-idioma.
+- **Tests y CI:** GitHub Actions en runners gratuitos con build de producción y
+  unit tests en Chrome headless, y el artefacto se guarda 7 días; no hay tests
+  e2e. Con usuarios reales: e2e en cada PR, cobertura mínima obligatoria y
+  despliegue continuo tras pasar el pipeline.
+- **Asistente técnico:** el chat responde contra `POST /api/v1/assistant` con la
+  documentación del propio repo, y hoy está abierto también desde el login. Con
+  usuarios reales: limitar el uso público del endpoint, controlar el gasto por
+  consulta y protegerlo de abuso y de errores de contenido.
+- **Datos y formato:** la regla de formato numérico español (`fmtNum`/`fmtEuro`,
+  ADR-002) nace de un requisito real del cliente y no se negocia por presupuesto.
+  Con usuarios reales: además, localización de fechas y de textos.
+
+Lo que no cambia entre los dos escenarios es el contrato con la API `/api/v1`,
+la arquitectura de componentes standalone y la regla de formato español: lo que
+cambiaría es el uso (un autor frente a clientes reales y datos reales), no el
+diseño del código.
+
 ## Cómo arrancar
 
 1. **Backend**: clona y arranca el backend original `Kavana-Warehouse` en
