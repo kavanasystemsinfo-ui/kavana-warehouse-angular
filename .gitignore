@@ -46,3 +46,8 @@ Thumbs.db
 # Angular dev server (ng serve) runtime artefacts
 ng.log
 ng.pid
+
+# Secretos (auditoria de seguridad)
+.env
+.env.*
+!.env.example
